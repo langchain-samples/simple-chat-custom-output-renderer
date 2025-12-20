@@ -33,6 +33,12 @@
             width: 100%;
             display: flex;
             flex-direction: column;
+            opacity: 1;
+            transition: opacity 0.15s ease-in-out;
+        }
+
+        .conversation.updating {
+            opacity: 0.3;
         }
 
         .message {
@@ -1085,28 +1091,11 @@
             }
         }
 
-        window.addEventListener('message', (event) => {
-            const { type, data, metadata } = event.data;
+        // Debounce rendering to prevent flashing from multiple rapid updates
+        let renderTimeout = null;
+        let isUpdating = false;
 
-            console.log('===========================================');
-            console.log('[Renderer] Received message from LangSmith');
-            console.log('[Renderer] Type:', type);
-            console.log('[Renderer] Data structure:', {
-                isArray: Array.isArray(data),
-                isObject: typeof data === 'object',
-                hasRole: data?.role || data?.type,
-                hasMessages: data?.messages,
-                dataKeys: data ? Object.keys(data) : null
-            });
-            console.log('[Renderer] Full data:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
-            console.log('===========================================');
-
-            // Focus on rendering the data (the output)
-            if (!data) {
-                console.warn('[Renderer] No data to display');
-                return;
-            }
-
+        function performRender(data) {
             // Build new content first (offscreen) to avoid flash
             const conversationCard = document.createElement('div');
             conversationCard.className = 'conversation';
@@ -1162,11 +1151,62 @@
 
             if (conversationHTML) {
                 conversationCard.innerHTML = conversationHTML;
-                // Replace entire container content in one atomic operation to prevent flash
-                conversationsContainer.replaceChildren(conversationCard);
+
+                // Smooth transition: fade out slightly, replace content, fade in
+                const existingCard = conversationsContainer.querySelector('.conversation');
+                if (existingCard && !isUpdating) {
+                    isUpdating = true;
+                    existingCard.classList.add('updating');
+
+                    setTimeout(() => {
+                        conversationsContainer.replaceChildren(conversationCard);
+                        // Trigger reflow to ensure CSS transition works
+                        void conversationCard.offsetWidth;
+                        conversationCard.classList.remove('updating');
+                        isUpdating = false;
+                    }, 150); // Match CSS transition duration
+                } else {
+                    // First render, no transition needed
+                    conversationsContainer.replaceChildren(conversationCard);
+                    isUpdating = false;
+                }
             } else {
                 console.warn('[Renderer] Unable to render data');
+                isUpdating = false;
             }
+        }
+
+        window.addEventListener('message', (event) => {
+            const { type, data, metadata } = event.data;
+
+            console.log('===========================================');
+            console.log('[Renderer] Received message from LangSmith');
+            console.log('[Renderer] Type:', type);
+            console.log('[Renderer] Data structure:', {
+                isArray: Array.isArray(data),
+                isObject: typeof data === 'object',
+                hasRole: data?.role || data?.type,
+                hasMessages: data?.messages,
+                dataKeys: data ? Object.keys(data) : null
+            });
+            console.log('[Renderer] Full data:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+            console.log('===========================================');
+
+            // Focus on rendering the data (the output)
+            if (!data) {
+                console.warn('[Renderer] No data to display');
+                return;
+            }
+
+            // Debounce: Clear any pending render and schedule a new one
+            if (renderTimeout) {
+                clearTimeout(renderTimeout);
+            }
+
+            renderTimeout = setTimeout(() => {
+                performRender(data);
+                renderTimeout = null;
+            }, 50); // Small delay to batch rapid updates
         });
 
         console.log('Chat LangChain Custom Output Renderer is ready!');
