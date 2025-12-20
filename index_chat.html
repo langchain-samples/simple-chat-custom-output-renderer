@@ -220,12 +220,15 @@
         }
 
         .message-role {
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
-            opacity: 0.8;
+            opacity: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .message.user .message-role {
@@ -233,7 +236,7 @@
         }
 
         .message.assistant .message-role {
-            color: #cbd5e1;
+            color: #e2e8f0;
         }
 
         .message.tool .message-role {
@@ -881,7 +884,19 @@
         }
 
         function renderMessage(message, index) {
-            const role = message.role || 'unknown';
+            console.log('[renderMessage] Input:', message);
+
+            // Try multiple fields to find the role
+            let role = message.role || message.type || message.kind || 'unknown';
+
+            // If message has a 'data' field, check if the actual message is nested
+            if (message.data && typeof message.data === 'object') {
+                if (message.data.role) role = message.data.role;
+                if (message.data.type) role = message.data.type;
+            }
+
+            console.log('[renderMessage] Detected role:', role);
+
             const messageClass = `message ${role}`;
             const messageId = `msg-${Date.now()}-${index}`;
             const rawId = `raw-${messageId}`;
@@ -891,23 +906,39 @@
 
             let bubbleHTML = '';
 
+            // Map roles to display names
+            const roleDisplayNames = {
+                'user': 'Human',
+                'assistant': 'AI Assistant',
+                'tool': 'Tool'
+            };
+            const displayRole = roleDisplayNames[role] || role;
+
             // Add role header with appropriate toggles
             const roleHeader = `
                 <div class="message-role">
-                    ${role}${message.name ? ` (${message.name})` : ''}
-                    ${role !== 'tool' ? `<span class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')" style="color: #e2e8f0 !important;">{ } Raw</span>` : ''}
-                    ${role === 'tool' ? `<span class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')" style="color: #94a3b8;">▼ Expand</span>` : ''}
+                    <span>${displayRole}${message.name ? ` (${message.name})` : ''}</span>
+                    ${role !== 'tool' ? `<span class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')" style="color: #e2e8f0 !important; cursor: pointer;">{ } Raw</span>` : ''}
+                    ${role === 'tool' ? `<span class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')" style="color: #94a3b8; cursor: pointer;">▼ Expand</span>` : ''}
                 </div>
             `;
 
             // Build rendered view
             let renderedHTML = '';
 
+            // Extract content from message (handle nested structures)
+            let content = message.content;
+            if (!content && message.data && message.data.content) {
+                content = message.data.content;
+            }
+
+            console.log('[renderMessage] Content:', content);
+
             // Skip rendered view for tool messages (they only show raw JSON)
             if (role !== 'tool') {
                 // Content with formatting
-                if (message.content) {
-                    const formattedContent = formatContent(message.content);
+                if (content) {
+                    const formattedContent = formatContent(content);
                     if (formattedContent.includes('<div')) {
                         renderedHTML += formattedContent;
                     } else {
