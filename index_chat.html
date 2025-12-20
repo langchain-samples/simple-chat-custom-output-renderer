@@ -1107,9 +1107,7 @@
                 return;
             }
 
-            // Clear existing content to avoid duplicates
-            conversationsContainer.innerHTML = '';
-
+            // Build new content first (offscreen) to avoid flash
             const conversationCard = document.createElement('div');
             conversationCard.className = 'conversation';
 
@@ -1164,7 +1162,8 @@
 
             if (conversationHTML) {
                 conversationCard.innerHTML = conversationHTML;
-                conversationsContainer.appendChild(conversationCard);
+                // Replace entire container content in one atomic operation to prevent flash
+                conversationsContainer.replaceChildren(conversationCard);
             } else {
                 console.warn('[Renderer] Unable to render data');
             }
