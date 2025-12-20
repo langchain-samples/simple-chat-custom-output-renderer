@@ -1,0 +1,12 @@
+[
+  {
+    "role": "user",
+    "id": "719a51a3-d75e-488f-b89d-6887c7f2b73a",
+    "content": "what is a context, explain to me in simple language and short"
+  },
+  {
+    "role": "assistant",
+    "id": "lc_run--019b3a30-5eec-7883-bb32-7b9655d7d7e2",
+    "content": "**In LangChain and LangGraph, a `context` is the shared information (like conversation history, user data, or tool results) that your agent or chain carries between steps.**\n\nIt acts like short-term memory\u2014**the LLM sees the full context to make better decisions** without starting from scratch each time.\n\n**Simple example:**\n```python\n# Agent gets user question + chat history as \"context\"\ncontext = {\n    \"messages\": [\"User: What's my name?\", \"You: Alex\"],\n    \"user_data\": {\"name\": \"Alex\"}\n}\n# LLM responds: \"Your name is Alex\" using context\n```\n\nThis keeps conversations natural and stateful."
+  }
+]

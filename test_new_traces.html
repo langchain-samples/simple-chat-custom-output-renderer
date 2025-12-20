@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test New Traces - Custom Renderer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f7;
+            min-height: 100vh;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-panel {
+            background: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #111827;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #374151;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            color: #111827;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:hover {
+            border-color: #9ca3af;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .info {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .trace-info {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 20px;
+            color: #374151;
+            font-size: 12px;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .trace-info div {
+            margin-bottom: 6px;
+        }
+
+        .trace-info .label {
+            color: #6b7280;
+            margin-right: 8px;
+        }
+
+        iframe {
+            flex: 1;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .highlight {
+            color: #14b8a6;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="control-panel">
+            <h1>Test New Traces (2025-12-20)</h1>
+
+            <div class="info">
+                This page simulates how <span class="highlight">index_chat.html</span> will render traces when used in LangSmith.
+                The renderer on the right is the actual custom output renderer that will be embedded in LangSmith.
+            </div>
+
+            <div class="form-group">
+                <label>Select Trace</label>
+                <select id="traceSelect">
+                    <option value="">Loading traces...</option>
+                </select>
+            </div>
+
+            <button onclick="loadTrace()">Load Trace</button>
+
+            <div class="trace-info" id="traceInfo" style="display: none;">
+                <div><span class="label">Trace ID:</span><span id="traceId"></span></div>
+                <div><span class="label">Messages:</span><span id="messageCount"></span></div>
+                <div><span class="label">File:</span><span id="fileName"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <iframe id="rendererFrame" src="index_chat.html"></iframe>
+    </div>
+
+    <script>
+        // New traces fetched on 2025-12-20
+        const traceFiles = [
+            { file: '019b3a32-63e3-7701-b560-e520303c0a5e.json', messages: 4 },
+            { file: '019b3a31-99d7-79c1-b5fc-c3749c4b7dc7.json', messages: 14 },
+            { file: '019b3a31-a9e5-7723-a6b9-cb23056528d2.json', messages: 29 },
+            { file: '019b3a32-220c-7f23-bbb9-1f33b86b5852.json', messages: 7 },
+            { file: '019b3a31-3551-7ba2-a15e-d723ad4ddfbe.json', messages: 25 },
+            { file: '019b3a30-8a46-7412-ac75-d67e7189eee6.json', messages: 12 },
+            { file: '019b3a31-2750-79b2-af97-273252e43b21.json', messages: 10 },
+            { file: '019b3a30-85f4-7fc1-ac10-03d4792fe012.json', messages: 17 },
+            { file: '019b3a30-5b05-7ea0-a0db-4214bf063375.json', messages: 2 },
+            { file: '019b3a30-7c7a-7a60-88e2-fb2880e2e3b8.json', messages: 16 }
+        ];
+
+        // Populate trace select dropdown
+        const traceSelect = document.getElementById('traceSelect');
+        traceSelect.innerHTML = '';
+        traceFiles.forEach((trace, index) => {
+            const option = document.createElement('option');
+            option.value = trace.file;
+            option.textContent = `Trace ${index + 1}: ${trace.file.split('.')[0].slice(-8)} (${trace.messages} msgs)`;
+            traceSelect.appendChild(option);
+        });
+        traceSelect.selectedIndex = 0;
+
+        async function loadTrace() {
+            const selectedFile = traceSelect.value;
+            if (!selectedFile) {
+                alert('Please select a trace');
+                return;
+            }
+
+            try {
+                // Fetch the trace file
+                const response = await fetch(`/traces/${selectedFile}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load trace: ${response.statusText}`);
+                }
+
+                const traceData = await response.json();
+
+                // Update trace info
+                document.getElementById('traceInfo').style.display = 'block';
+                document.getElementById('traceId').textContent = selectedFile.split('.')[0];
+                document.getElementById('messageCount').textContent = traceData.length;
+                document.getElementById('fileName').textContent = selectedFile;
+
+                // Send to renderer via postMessage (simulating LangSmith)
+                const iframe = document.getElementById('rendererFrame');
+                const message = {
+                    type: 'output',
+                    data: traceData,
+                    metadata: {
+                        trace_id: selectedFile.split('.')[0],
+                        message_count: traceData.length
+                    }
+                };
+
+                iframe.contentWindow.postMessage(message, '*');
+
+                console.log('Trace loaded:', selectedFile);
+                console.log('Message sent to renderer:', message);
+            } catch (error) {
+                console.error('Error loading trace:', error);
+                alert(`Error loading trace: ${error.message}`);
+            }
+        }
+
+        // Auto-load first trace on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('Auto-loading first trace...');
+                loadTrace();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

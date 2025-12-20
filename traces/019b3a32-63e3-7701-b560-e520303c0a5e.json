@@ -1,0 +1,22 @@
+[
+  {
+    "role": "user",
+    "id": "719a51a3-d75e-488f-b89d-6887c7f2b73a",
+    "content": "what is a context, explain to me in simple language and short"
+  },
+  {
+    "role": "assistant",
+    "id": "lc_run--019b3a30-5eec-7883-bb32-7b9655d7d7e2",
+    "content": "**In LangChain and LangGraph, a `context` is the shared information (like conversation history, user data, or tool results) that your agent or chain carries between steps.**\n\nIt acts like short-term memory\u2014**the LLM sees the full context to make better decisions** without starting from scratch each time.\n\n**Simple example:**\n```python\n# Agent gets user question + chat history as \"context\"\ncontext = {\n    \"messages\": [\"User: What's my name?\", \"You: Alex\"],\n    \"user_data\": {\"name\": \"Alex\"}\n}\n# LLM responds: \"Your name is Alex\" using context\n```\n\nThis keeps conversations natural and stateful."
+  },
+  {
+    "role": "user",
+    "id": "f8abc587-45f7-496a-b20c-4453d540d084",
+    "content": "what do you mean by static conversation and  conversation scoped , explain to me in simple language and short"
+  },
+  {
+    "role": "assistant",
+    "id": "lc_run--019b3a32-6739-7771-b672-b7bc60cd0b41",
+    "content": "**Static conversation: Fixed chat history shared by **all** agents/subgraphs (global memory).**\n\n**Conversation scoped: Unique chat history **per** agent/subgraph (private memory).**\n\n```python\n# Static = everyone sees same history\nstatic_context = {\"conversation_id\": \"abc123\", \"messages\": [\"User: Hi\"]}\n\n# Conversation scoped = agent1 sees its own history\nagent1_context = {\"agent_id\": \"agent1\", \"messages\": [\"User: Search...\"]}\nagent2_context = {\"agent_id\": \"agent2\", \"messages\": [\"User: Analyze...\"]}\n```\n\n**Static = team chat. Scoped = private DMs.**"
+  }
+]

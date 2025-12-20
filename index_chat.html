@@ -14,7 +14,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #0f172a;
+            background: #f5f5f7;
             min-height: 100vh;
             padding: 20px;
             width: 100%;
@@ -76,57 +76,62 @@
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #4a6fb5 0%, #2d5a9e 100%);
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
             border-bottom-left-radius: 4px;  /* Tail on left for user */
             margin-right: auto;
+            border: 1px solid #7dd3fc;
         }
 
         .message.assistant .message-bubble {
-            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             border-bottom-right-radius: 4px;  /* Tail on right for assistant */
             margin-left: auto;
+            border: 1px solid #86efac;
         }
 
         .message.tool .message-bubble {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border: 1px solid #334155;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 1px solid #fbbf24;
             border-bottom-right-radius: 4px;
             margin-left: auto;
         }
 
         .message.tool .message-bubble:hover {
-            border-color: #475569;
+            border-color: #f59e0b;
         }
 
         .tool-toggle {
             display: inline-block;
             margin-left: 8px;
             padding: 2px 6px;
-            background: rgba(255, 255, 255, 0.1);
+            background: #f59e0b;
             border-radius: 4px;
             font-size: 10px;
-            opacity: 0.9;
-            color: #94a3b8;
+            opacity: 1;
+            color: #ffffff;
             cursor: pointer;
             transition: all 0.2s;
+            border: 1px solid #d97706;
+            font-weight: 600;
         }
 
         .tool-toggle:hover {
             opacity: 1;
-            background: rgba(255, 255, 255, 0.15);
-            color: #cbd5e1;
+            background: #d97706;
+            color: #ffffff;
+            border-color: #b45309;
         }
 
         .tool-content {
             margin-top: 8px;
             max-height: 400px;
             overflow-y: auto;
-            background: #161b22;
-            border: 1px solid #30363d;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
             border-radius: 6px;
             padding: 12px;
             font-size: 13px;
-            color: #c9d1d9;
+            color: #1f2937;
             line-height: 1.5;
             font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
         }
@@ -142,7 +147,7 @@
             border: none;
             white-space: pre-wrap;
             word-wrap: break-word;
-            color: #c9d1d9;
+            color: #1f2937;
         }
 
         .tool-content::-webkit-scrollbar {
@@ -150,38 +155,40 @@
         }
 
         .tool-content::-webkit-scrollbar-track {
-            background: #1e293b;
+            background: #f3f4f6;
             border-radius: 4px;
         }
 
         .tool-content::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #d1d5db;
             border-radius: 4px;
         }
 
         .tool-content::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #9ca3af;
         }
 
         .raw-toggle {
             display: inline-block !important;
             margin-left: 8px;
             padding: 4px 8px;
-            background: rgba(255, 255, 255, 0.15);
+            background: #14b8a6;
             border-radius: 4px;
             font-size: 11px;
             cursor: pointer;
             opacity: 1;
             transition: all 0.2s;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #e2e8f0 !important;
-            font-weight: 500;
+            border: 1px solid #0d9488;
+            color: #ffffff !important;
+            font-weight: 600;
         }
 
         .raw-toggle:hover {
-            background: rgba(255, 255, 255, 0.25);
-            border-color: rgba(255, 255, 255, 0.4);
+            background: #0d9488;
+            border-color: #0f766e;
             color: #ffffff !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(20, 184, 166, 0.3);
         }
 
         .raw-view {
@@ -189,14 +196,14 @@
             font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
             font-size: 12px;
             line-height: 1.5;
-            color: #c9d1d9;
+            color: #1f2937;
         }
 
         /* For non-tool messages, add the box styling */
         .message:not(.tool) .raw-view {
             margin-top: 12px;
-            background: #161b22;
-            border: 1px solid #30363d;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
             border-radius: 6px;
             padding: 12px;
         }
@@ -206,7 +213,7 @@
             padding: 0;
             background: transparent;
             border: none;
-            color: #c9d1d9;
+            color: #1f2937;
             white-space: pre-wrap;
             word-wrap: break-word;
         }
@@ -232,19 +239,19 @@
         }
 
         .message.user .message-role {
-            color: #dbeafe;
+            color: #0c4a6e;
         }
 
         .message.assistant .message-role {
-            color: #e2e8f0;
+            color: #14532d;
         }
 
         .message.tool .message-role {
-            color: #94a3b8;
+            color: #78350f;
         }
 
         .message-content {
-            color: #ffffff;
+            color: #1f2937;
             line-height: 1.6;
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -252,16 +259,16 @@
         }
 
         .message.tool .message-content {
-            color: #e2e8f0;
+            color: #374151;
         }
 
         /* Markdown Styling */
         .markdown-content {
-            color: #ffffff;
+            color: #1f2937;
         }
 
         .message.tool .markdown-content {
-            color: #e2e8f0;
+            color: #374151;
         }
 
         .markdown-content h1,
@@ -310,27 +317,27 @@
         }
 
         .markdown-content code {
-            background: rgba(110, 118, 129, 0.4);
+            background: rgba(0, 0, 0, 0.05);
             padding: 2px 6px;
             border-radius: 6px;
             font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
             font-size: 0.85em;
-            color: #c9d1d9;
+            color: #991b1b;
         }
 
         .markdown-content pre {
-            background: #161b22;
+            background: #ffffff;
             padding: 16px;
             border-radius: 6px;
             overflow-x: auto;
             margin-bottom: 12px;
-            border: 1px solid #30363d;
+            border: 1px solid #d1d5db;
         }
 
         .markdown-content pre code {
             background: none;
             padding: 0;
-            color: #c9d1d9;
+            color: #1f2937;
             font-size: 13px;
             line-height: 1.5;
             font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
@@ -338,37 +345,37 @@
 
         /* GitHub-style syntax highlighting */
         .markdown-content pre code .keyword {
-            color: #ff7b72;
+            color: #d73a49;
         }
 
         .markdown-content pre code .string {
-            color: #a5d6ff;
+            color: #22863a;
         }
 
         .markdown-content pre code .comment {
-            color: #8b949e;
+            color: #6a737d;
             font-style: italic;
         }
 
         .markdown-content pre code .function {
-            color: #d2a8ff;
+            color: #6f42c1;
         }
 
         .markdown-content pre code .number {
-            color: #79c0ff;
+            color: #005cc5;
         }
 
         .markdown-content a {
-            color: #93c5fd;
+            color: #2563eb;
             text-decoration: underline;
         }
 
         .markdown-content a:hover {
-            color: #bfdbfe;
+            color: #1d4ed8;
         }
 
         .markdown-content blockquote {
-            border-left: 4px solid rgba(255, 255, 255, 0.3);
+            border-left: 4px solid #d1d5db;
             padding-left: 16px;
             margin: 12px 0;
             opacity: 0.9;
@@ -382,27 +389,27 @@
 
         .markdown-content th,
         .markdown-content td {
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid #d1d5db;
             padding: 8px 12px;
             text-align: left;
         }
 
         .markdown-content th {
-            background: rgba(0, 0, 0, 0.3);
+            background: #f3f4f6;
             font-weight: 600;
         }
 
         /* JSON Syntax Highlighting - GitHub style */
         .json-container {
-            background: #161b22;
+            background: #ffffff;
             padding: 16px;
             border-radius: 6px;
             overflow-x: auto;
             font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
             font-size: 13px;
             line-height: 1.5;
-            border: 1px solid #30363d;
-            color: #c9d1d9;
+            border: 1px solid #d1d5db;
+            color: #1f2937;
         }
 
         .json-container pre {
@@ -416,23 +423,23 @@
         }
 
         .json-key {
-            color: #79c0ff;
+            color: #0369a1;
         }
 
         .json-string {
-            color: #a5d6ff;
+            color: #15803d;
         }
 
         .json-number {
-            color: #79c0ff;
+            color: #0369a1;
         }
 
         .json-boolean {
-            color: #ff7b72;
+            color: #be123c;
         }
 
         .json-null {
-            color: #8b949e;
+            color: #6b7280;
         }
 
         .tool-calls {
@@ -440,8 +447,8 @@
         }
 
         .tool-call {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.03);
+            border: 1px solid #d1d5db;
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 10px;
@@ -457,13 +464,13 @@
         .tool-name {
             font-size: 14px;
             font-weight: 600;
-            color: #fbbf24;
+            color: #78350f;
             font-family: 'Monaco', 'Courier New', monospace;
         }
 
         .tool-id {
             font-size: 11px;
-            color: #64748b;
+            color: #6b7280;
             font-family: 'Monaco', 'Courier New', monospace;
         }
 
@@ -472,12 +479,12 @@
             font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
             margin-top: 8px;
             padding: 12px;
-            background: #161b22;
+            background: #ffffff;
             border-radius: 6px;
-            border: 1px solid #30363d;
+            border: 1px solid #d1d5db;
             overflow-x: auto;
             line-height: 1.5;
-            color: #c9d1d9;
+            color: #1f2937;
         }
 
         .tool-arguments pre {
@@ -490,31 +497,31 @@
         }
 
         .tool-arguments .json-key {
-            color: #79c0ff;
+            color: #0369a1;
         }
 
         .tool-arguments .json-string {
-            color: #a5d6ff;
+            color: #15803d;
         }
 
         .tool-arguments .json-number {
-            color: #79c0ff;
+            color: #0369a1;
         }
 
         .tool-arguments .json-boolean {
-            color: #ff7b72;
+            color: #be123c;
         }
 
         .tool-result {
             max-height: 400px;
             overflow-y: auto;
-            background: #161b22;
-            border: 1px solid #30363d;
+            background: #ffffff;
+            border: 1px solid #d1d5db;
             border-radius: 6px;
             padding: 12px;
             margin-top: 10px;
             font-size: 13px;
-            color: #c9d1d9;
+            color: #1f2937;
             line-height: 1.5;
             font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
         }
@@ -524,22 +531,22 @@
         }
 
         .tool-result::-webkit-scrollbar-track {
-            background: #1e293b;
+            background: #f3f4f6;
             border-radius: 4px;
         }
 
         .tool-result::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: #d1d5db;
             border-radius: 4px;
         }
 
         .tool-result::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: #9ca3af;
         }
 
         .tool-result .markdown-content {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            color: #e2e8f0;
+            color: #374151;
         }
 
         .tool-result .json-container pre {
@@ -552,8 +559,8 @@
         }
 
         .search-result {
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #ffffff;
+            border: 1px solid #d1d5db;
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 12px;
@@ -562,13 +569,13 @@
         .search-result-title {
             font-size: 14px;
             font-weight: 600;
-            color: #93c5fd;
+            color: #2563eb;
             margin-bottom: 6px;
         }
 
         .search-result-link {
             font-size: 11px;
-            color: #94a3b8;
+            color: #6b7280;
             text-decoration: none;
             display: block;
             margin-bottom: 8px;
@@ -576,12 +583,12 @@
         }
 
         .search-result-link:hover {
-            color: #93c5fd;
+            color: #2563eb;
         }
 
         .search-result-content {
             font-size: 13px;
-            color: #cbd5e1;
+            color: #374151;
             line-height: 1.5;
             max-height: 200px;
             overflow-y: auto;
@@ -909,7 +916,9 @@
             // Map roles to display names
             const roleDisplayNames = {
                 'user': 'Human',
+                'human': 'Human',
                 'assistant': 'AI Assistant',
+                'ai': 'AI Assistant',
                 'tool': 'Tool'
             };
             const displayRole = roleDisplayNames[role] || role;
@@ -950,20 +959,26 @@
                 if (message.tool_calls && message.tool_calls.length > 0) {
                     renderedHTML += '<div class="tool-calls">';
                     for (let toolCall of message.tool_calls) {
-                        const func = toolCall.function || {};
+                        // Handle both nested function structure and flat structure
+                        const func = toolCall.function || toolCall;
+                        const toolName = func.name || toolCall.name || 'Unknown Tool';
+                        const toolArgs = func.arguments || toolCall.args;
+
                         let argsHTML = '';
-                        if (func.arguments) {
+                        if (toolArgs) {
                             // Try to parse and format arguments as JSON
-                            if (isJSON(func.arguments)) {
-                                argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(func.arguments)}</pre></div>`;
+                            if (typeof toolArgs === 'object') {
+                                argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
+                            } else if (isJSON(toolArgs)) {
+                                argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
                             } else {
-                                argsHTML = `<div class="tool-arguments">${func.arguments}</div>`;
+                                argsHTML = `<div class="tool-arguments">${toolArgs}</div>`;
                             }
                         }
                         renderedHTML += `
                             <div class="tool-call">
                                 <div class="tool-call-header">
-                                    <span class="tool-name">${func.name || 'Unknown Tool'}</span>
+                                    <span class="tool-name">${toolName}</span>
                                     <span class="tool-id">${toolCall.id || ''}</span>
                                 </div>
                                 ${argsHTML}
