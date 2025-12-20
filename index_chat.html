@@ -828,14 +828,36 @@
                 return `<div class="json-container"><pre>${formatted}</pre></div>`;
             }
 
-            // If content is an object, stringify it first
+            // If content is an object, check for common fields like "answer", "output", "text"
             if (typeof content === 'object') {
+                // Try to extract text from common fields
+                const textField = content.answer || content.output || content.text || content.content;
+                if (textField && typeof textField === 'string') {
+                    console.log('[formatContent] Extracting text from object field:', textField.substring(0, 100));
+                    const html = parseMarkdown(textField);
+                    return `<div class="markdown-content">${html}</div>`;
+                }
+
+                // Otherwise display as formatted JSON
                 const formatted = syntaxHighlightJSON(content);
                 return `<div class="json-container"><pre>${formatted}</pre></div>`;
             }
 
             // Check if entire content is pure JSON string
             if (isJSON(content)) {
+                try {
+                    const parsed = JSON.parse(content);
+                    // Try to extract text from the parsed object
+                    const textField = parsed.answer || parsed.output || parsed.text || parsed.content;
+                    if (textField && typeof textField === 'string') {
+                        console.log('[formatContent] Extracting text from JSON string field:', textField.substring(0, 100));
+                        const html = parseMarkdown(textField);
+                        return `<div class="markdown-content">${html}</div>`;
+                    }
+                } catch (e) {
+                    console.warn('[formatContent] Failed to extract from JSON string:', e);
+                }
+
                 const formatted = syntaxHighlightJSON(content);
                 return `<div class="json-container"><pre>${formatted}</pre></div>`;
             }
