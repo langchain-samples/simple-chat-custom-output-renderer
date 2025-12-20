@@ -1064,7 +1064,18 @@
         window.addEventListener('message', (event) => {
             const { type, data, metadata } = event.data;
 
-            console.log('[Renderer] Received message:', { type, data, metadata });
+            console.log('===========================================');
+            console.log('[Renderer] Received message from LangSmith');
+            console.log('[Renderer] Type:', type);
+            console.log('[Renderer] Data structure:', {
+                isArray: Array.isArray(data),
+                isObject: typeof data === 'object',
+                hasRole: data?.role || data?.type,
+                hasMessages: data?.messages,
+                dataKeys: data ? Object.keys(data) : null
+            });
+            console.log('[Renderer] Full data:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+            console.log('===========================================');
 
             // Focus on rendering the data (the output)
             if (!data) {
@@ -1086,19 +1097,29 @@
 
             if (Array.isArray(data)) {
                 // Array of messages - render each one
+                console.log('[Renderer] Rendering array of', data.length, 'messages');
                 data.forEach((message, index) => {
+                    console.log(`[Renderer] Message ${index}:`, {
+                        role: message.role || message.type,
+                        hasContent: !!message.content,
+                        contentType: Array.isArray(message.content) ? 'array' : typeof message.content,
+                        hasToolCalls: !!message.tool_calls
+                    });
                     conversationHTML += renderMessage(message, index);
                 });
-            } else if (typeof data === 'object' && data.role) {
+            } else if (typeof data === 'object' && (data.role || data.type)) {
                 // Single message object with role
+                console.log('[Renderer] Rendering single message with role:', data.role || data.type);
                 conversationHTML += renderMessage(data, 0);
             } else if (typeof data === 'object' && data.messages && Array.isArray(data.messages)) {
                 // Object containing messages array
+                console.log('[Renderer] Rendering messages field with', data.messages.length, 'messages');
                 data.messages.forEach((message, index) => {
                     conversationHTML += renderMessage(message, index);
                 });
             } else if (typeof data === 'string') {
                 // Plain string - wrap as a message
+                console.log('[Renderer] Rendering plain string');
                 conversationHTML += renderMessage({
                     role: 'assistant',
                     content: data,
@@ -1106,6 +1127,7 @@
                 }, 0);
             } else {
                 // Generic object - display as formatted JSON
+                console.log('[Renderer] Rendering generic object as JSON');
                 conversationHTML += renderMessage({
                     role: 'assistant',
                     content: JSON.stringify(data, null, 2),
