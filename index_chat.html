@@ -6,6 +6,50 @@
     <title>Chat LangChain Custom Output Renderer</title>
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <style>
+        :root {
+            /* Colors */
+            --bg-primary: #f5f5f7;
+            --bg-secondary: #f3f4f6;
+            --bg-white: #ffffff;
+            --border-light: #e5e7eb;
+            --border-medium: #d1d5db;
+            --border-dark: #9ca3af;
+            --text-primary: #1f2937;
+            --text-secondary: #374151;
+            --text-muted: #6b7280;
+
+            /* User message colors */
+            --user-bg-start: #e0f2fe;
+            --user-bg-end: #bae6fd;
+            --user-border: #7dd3fc;
+            --user-text: #0c4a6e;
+
+            /* Assistant message colors */
+            --assistant-bg-start: #f0fdf4;
+            --assistant-bg-end: #dcfce7;
+            --assistant-border: #86efac;
+            --assistant-text: #14532d;
+
+            /* Tool message colors */
+            --tool-bg-start: #fef3c7;
+            --tool-bg-end: #fde68a;
+            --tool-border: #fbbf24;
+            --tool-border-hover: #f59e0b;
+            --tool-text: #78350f;
+
+            /* Button colors */
+            --btn-teal-bg: #14b8a6;
+            --btn-teal-border: #0d9488;
+            --btn-teal-hover: #0d9488;
+            --btn-amber-bg: #f59e0b;
+            --btn-amber-border: #d97706;
+            --btn-amber-hover: #d97706;
+
+            /* Fonts */
+            --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,12 +57,11 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: #f5f5f7;
+            font-family: var(--font-main);
+            background: var(--bg-primary);
             min-height: 100vh;
             padding: 20px;
             width: 100%;
-            box-sizing: border-box;
         }
 
         .container {
@@ -42,8 +85,8 @@
         }
 
         .message {
-            display: flex !important;
-            width: 100% !important;
+            display: flex;
+            width: 100%;
             margin-bottom: 20px;
             padding: 0;
             animation: fadeIn 0.3s ease-out;
@@ -62,13 +105,13 @@
         }
 
         .message.user {
-            justify-content: flex-start !important;  /* User on LEFT */
+            justify-content: flex-start;
             text-align: left;
         }
 
         .message.assistant,
         .message.tool {
-            justify-content: flex-end !important;  /* Assistant on RIGHT */
+            justify-content: flex-end;
             text-align: right;
         }
 
@@ -82,64 +125,81 @@
         }
 
         .message.user .message-bubble {
-            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-            border-bottom-left-radius: 4px;  /* Tail on left for user */
+            background: linear-gradient(135deg, var(--user-bg-start) 0%, var(--user-bg-end) 100%);
+            border-bottom-left-radius: 4px;
             margin-right: auto;
-            border: 1px solid #7dd3fc;
+            border: 1px solid var(--user-border);
         }
 
         .message.assistant .message-bubble {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            border-bottom-right-radius: 4px;  /* Tail on right for assistant */
+            background: linear-gradient(135deg, var(--assistant-bg-start) 0%, var(--assistant-bg-end) 100%);
+            border-bottom-right-radius: 4px;
             margin-left: auto;
-            border: 1px solid #86efac;
+            border: 1px solid var(--assistant-border);
         }
 
         .message.tool .message-bubble {
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-            border: 1px solid #fbbf24;
+            background: linear-gradient(135deg, var(--tool-bg-start) 0%, var(--tool-bg-end) 100%);
+            border: 1px solid var(--tool-border);
             border-bottom-right-radius: 4px;
             margin-left: auto;
         }
 
         .message.tool .message-bubble:hover {
-            border-color: #f59e0b;
+            border-color: var(--tool-border-hover);
         }
 
         .tool-toggle {
             display: inline-block;
             margin-left: 8px;
             padding: 2px 6px;
-            background: #f59e0b;
+            background: var(--btn-amber-bg);
             border-radius: 4px;
             font-size: 10px;
-            opacity: 1;
-            color: #ffffff;
+            color: var(--bg-white);
             cursor: pointer;
             transition: all 0.2s;
-            border: 1px solid #d97706;
+            border: 1px solid var(--btn-amber-border);
             font-weight: 600;
         }
 
         .tool-toggle:hover {
-            opacity: 1;
-            background: #d97706;
-            color: #ffffff;
+            background: var(--btn-amber-hover);
+            color: var(--bg-white);
             border-color: #b45309;
+        }
+
+        /* Shared scrollbar styles */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: var(--border-medium);
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: var(--border-dark);
         }
 
         .tool-content {
             margin-top: 8px;
             max-height: 400px;
             overflow-y: auto;
-            background: #ffffff;
-            border: 1px solid #d1d5db;
+            background: var(--bg-white);
+            border: 1px solid var(--border-medium);
             border-radius: 6px;
             padding: 12px;
             font-size: 13px;
-            color: #1f2937;
+            color: var(--text-primary);
             line-height: 1.5;
-            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-family: var(--font-mono);
         }
 
         .tool-content.collapsed {
@@ -153,63 +213,43 @@
             border: none;
             white-space: pre-wrap;
             word-wrap: break-word;
-            color: #1f2937;
+            color: var(--text-primary);
         }
 
-        .tool-content::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .tool-content::-webkit-scrollbar-track {
-            background: #f3f4f6;
-            border-radius: 4px;
-        }
-
-        .tool-content::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 4px;
-        }
-
-        .tool-content::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
-        }
-
-        .raw-toggle {
-            display: inline-block !important;
+        .message-role .raw-toggle {
+            display: inline-block;
             margin-left: 8px;
             padding: 4px 8px;
-            background: #14b8a6;
+            background: var(--btn-teal-bg);
             border-radius: 4px;
             font-size: 11px;
             cursor: pointer;
-            opacity: 1;
             transition: all 0.2s;
-            border: 1px solid #0d9488;
-            color: #ffffff !important;
+            border: 1px solid var(--btn-teal-border);
+            color: var(--bg-white);
             font-weight: 600;
         }
 
-        .raw-toggle:hover {
-            background: #0d9488;
+        .message-role .raw-toggle:hover {
+            background: var(--btn-teal-hover);
             border-color: #0f766e;
-            color: #ffffff !important;
+            color: var(--bg-white);
             transform: translateY(-1px);
             box-shadow: 0 2px 6px rgba(20, 184, 166, 0.3);
         }
 
         .raw-view {
             overflow-x: auto;
-            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 12px;
             line-height: 1.5;
-            color: #1f2937;
+            color: var(--text-primary);
         }
 
-        /* For non-tool messages, add the box styling */
         .message:not(.tool) .raw-view {
             margin-top: 12px;
-            background: #ffffff;
-            border: 1px solid #d1d5db;
+            background: var(--bg-white);
+            border: 1px solid var(--border-medium);
             border-radius: 6px;
             padding: 12px;
         }
@@ -219,7 +259,7 @@
             padding: 0;
             background: transparent;
             border: none;
-            color: #1f2937;
+            color: var(--text-primary);
             white-space: pre-wrap;
             word-wrap: break-word;
         }
@@ -245,19 +285,19 @@
         }
 
         .message.user .message-role {
-            color: #0c4a6e;
+            color: var(--user-text);
         }
 
         .message.assistant .message-role {
-            color: #14532d;
+            color: var(--assistant-text);
         }
 
         .message.tool .message-role {
-            color: #78350f;
+            color: var(--tool-text);
         }
 
         .message-content {
-            color: #1f2937;
+            color: var(--text-primary);
             line-height: 1.6;
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -265,16 +305,16 @@
         }
 
         .message.tool .message-content {
-            color: #374151;
+            color: var(--text-secondary);
         }
 
         /* Markdown Styling */
         .markdown-content {
-            color: #1f2937;
+            color: var(--text-primary);
         }
 
         .message.tool .markdown-content {
-            color: #374151;
+            color: var(--text-secondary);
         }
 
         .markdown-content h1,
@@ -326,27 +366,27 @@
             background: rgba(0, 0, 0, 0.05);
             padding: 2px 6px;
             border-radius: 6px;
-            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 0.85em;
             color: #991b1b;
         }
 
         .markdown-content pre {
-            background: #ffffff;
+            background: var(--bg-white);
             padding: 16px;
             border-radius: 6px;
             overflow-x: auto;
             margin-bottom: 12px;
-            border: 1px solid #d1d5db;
+            border: 1px solid var(--border-medium);
         }
 
         .markdown-content pre code {
             background: none;
             padding: 0;
-            color: #1f2937;
+            color: var(--text-primary);
             font-size: 13px;
             line-height: 1.5;
-            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-family: var(--font-mono);
         }
 
         /* GitHub-style syntax highlighting */
@@ -381,7 +421,7 @@
         }
 
         .markdown-content blockquote {
-            border-left: 4px solid #d1d5db;
+            border-left: 4px solid var(--border-medium);
             padding-left: 16px;
             margin: 12px 0;
             opacity: 0.9;
@@ -395,27 +435,27 @@
 
         .markdown-content th,
         .markdown-content td {
-            border: 1px solid #d1d5db;
+            border: 1px solid var(--border-medium);
             padding: 8px 12px;
             text-align: left;
         }
 
         .markdown-content th {
-            background: #f3f4f6;
+            background: var(--bg-secondary);
             font-weight: 600;
         }
 
-        /* JSON Syntax Highlighting - GitHub style */
+        /* JSON Syntax Highlighting */
         .json-container {
-            background: #ffffff;
+            background: var(--bg-white);
             padding: 16px;
             border-radius: 6px;
             overflow-x: auto;
-            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-family: var(--font-mono);
             font-size: 13px;
             line-height: 1.5;
-            border: 1px solid #d1d5db;
-            color: #1f2937;
+            border: 1px solid var(--border-medium);
+            color: var(--text-primary);
         }
 
         .json-container pre {
@@ -454,7 +494,7 @@
 
         .tool-call {
             background: rgba(0, 0, 0, 0.03);
-            border: 1px solid #d1d5db;
+            border: 1px solid var(--border-medium);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 10px;
@@ -470,27 +510,27 @@
         .tool-name {
             font-size: 14px;
             font-weight: 600;
-            color: #78350f;
-            font-family: 'Monaco', 'Courier New', monospace;
+            color: var(--tool-text);
+            font-family: var(--font-mono);
         }
 
         .tool-id {
             font-size: 11px;
-            color: #6b7280;
-            font-family: 'Monaco', 'Courier New', monospace;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
         }
 
         .tool-arguments {
             font-size: 13px;
-            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-family: var(--font-mono);
             margin-top: 8px;
             padding: 12px;
-            background: #ffffff;
+            background: var(--bg-white);
             border-radius: 6px;
-            border: 1px solid #d1d5db;
+            border: 1px solid var(--border-medium);
             overflow-x: auto;
             line-height: 1.5;
-            color: #1f2937;
+            color: var(--text-primary);
         }
 
         .tool-arguments pre {
@@ -521,38 +561,20 @@
         .tool-result {
             max-height: 400px;
             overflow-y: auto;
-            background: #ffffff;
-            border: 1px solid #d1d5db;
+            background: var(--bg-white);
+            border: 1px solid var(--border-medium);
             border-radius: 6px;
             padding: 12px;
             margin-top: 10px;
             font-size: 13px;
-            color: #1f2937;
+            color: var(--text-primary);
             line-height: 1.5;
-            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-        }
-
-        .tool-result::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .tool-result::-webkit-scrollbar-track {
-            background: #f3f4f6;
-            border-radius: 4px;
-        }
-
-        .tool-result::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 4px;
-        }
-
-        .tool-result::-webkit-scrollbar-thumb:hover {
-            background: #9ca3af;
+            font-family: var(--font-mono);
         }
 
         .tool-result .markdown-content {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            color: #374151;
+            font-family: var(--font-main);
+            color: var(--text-secondary);
         }
 
         .tool-result .json-container pre {
@@ -565,8 +587,8 @@
         }
 
         .search-result {
-            background: #ffffff;
-            border: 1px solid #d1d5db;
+            background: var(--bg-white);
+            border: 1px solid var(--border-medium);
             border-radius: 8px;
             padding: 12px;
             margin-bottom: 12px;
@@ -581,7 +603,7 @@
 
         .search-result-link {
             font-size: 11px;
-            color: #6b7280;
+            color: var(--text-muted);
             text-decoration: none;
             display: block;
             margin-bottom: 8px;
@@ -594,7 +616,7 @@
 
         .search-result-content {
             font-size: 13px;
-            color: #374151;
+            color: var(--text-secondary);
             line-height: 1.5;
             max-height: 200px;
             overflow-y: auto;
@@ -608,7 +630,9 @@
     </div>
 
     <script>
+        const DEBUG = false; // Set to true for debug logging
         const conversationsContainer = document.getElementById('conversations');
+        let messageCounter = 0; // Prevents ID collisions
 
         // Simple syntax highlighting function
         function highlightCode(code, lang) {
@@ -781,31 +805,15 @@
             });
         }
 
-        function detectAndFormatJSON(text) {
-            // Try to find JSON objects within text
-            const jsonPattern = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
-            let lastIndex = 0;
-            let result = '';
-            let match;
-
-            while ((match = jsonPattern.exec(text)) !== null) {
-                const potentialJSON = match[0];
-                if (isJSON(potentialJSON)) {
-                    // Add text before JSON
-                    result += text.slice(lastIndex, match.index);
-                    // Add formatted JSON
-                    result += `<div class="json-container" style="margin: 8px 0;">${syntaxHighlightJSON(potentialJSON)}</div>`;
-                    lastIndex = jsonPattern.lastIndex;
+        // Helper to extract text from common field names
+        function extractTextField(obj) {
+            const fields = ['answer', 'output', 'text', 'content', 'output_answer', 'message', 'response', 'result'];
+            for (const field of fields) {
+                if (obj[field] && typeof obj[field] === 'string') {
+                    return obj[field];
                 }
             }
-
-            // Add remaining text
-            if (lastIndex > 0) {
-                result += text.slice(lastIndex);
-                return result;
-            }
-
-            return text;
+            return null;
         }
 
         function formatContent(content) {
@@ -834,13 +842,11 @@
                 return `<div class="json-container"><pre>${formatted}</pre></div>`;
             }
 
-            // If content is an object, check for common fields like "answer", "output", "text"
+            // If content is an object, try to extract text from common fields
             if (typeof content === 'object') {
-                // Try to extract text from common fields (check common variations)
-                const textField = content.answer || content.output || content.text || content.content ||
-                                 content.output_answer || content.message || content.response || content.result;
-                if (textField && typeof textField === 'string') {
-                    console.log('[formatContent] Extracting text from object field:', textField.substring(0, 100));
+                const textField = extractTextField(content);
+                if (textField) {
+                    if (DEBUG) console.log('[formatContent] Extracting text from object:', textField.substring(0, 100));
                     const html = parseMarkdown(textField);
                     return `<div class="markdown-content">${html}</div>`;
                 }
@@ -854,16 +860,14 @@
             if (isJSON(content)) {
                 try {
                     const parsed = JSON.parse(content);
-                    // Try to extract text from the parsed object (check common variations)
-                    const textField = parsed.answer || parsed.output || parsed.text || parsed.content ||
-                                     parsed.output_answer || parsed.message || parsed.response || parsed.result;
-                    if (textField && typeof textField === 'string') {
-                        console.log('[formatContent] Extracting text from JSON string field:', textField.substring(0, 100));
+                    const textField = extractTextField(parsed);
+                    if (textField) {
+                        if (DEBUG) console.log('[formatContent] Extracting text from JSON string:', textField.substring(0, 100));
                         const html = parseMarkdown(textField);
                         return `<div class="markdown-content">${html}</div>`;
                     }
                 } catch (e) {
-                    console.warn('[formatContent] Failed to extract from JSON string:', e);
+                    if (DEBUG) console.warn('[formatContent] Failed to extract from JSON string:', e);
                 }
 
                 const formatted = syntaxHighlightJSON(content);
@@ -874,31 +878,6 @@
             const html = parseMarkdown(content);
             // ALWAYS wrap in markdown-content div, even if no transformation
             return `<div class="markdown-content">${html}</div>`;
-        }
-
-        function parseSearchResults(content) {
-            // Try to parse search results if they follow a pattern
-            const lines = content.split('\n');
-            const results = [];
-            let currentResult = null;
-
-            for (let line of lines) {
-                if (line.startsWith('Result ')) {
-                    if (currentResult) results.push(currentResult);
-                    currentResult = { content: '' };
-                } else if (line.startsWith('Title: ')) {
-                    if (currentResult) currentResult.title = line.replace('Title: ', '');
-                } else if (line.startsWith('Link: ')) {
-                    if (currentResult) currentResult.link = line.replace('Link: ', '');
-                } else if (line.startsWith('Content: ')) {
-                    if (currentResult) currentResult.content = line.replace('Content: ', '');
-                } else if (currentResult && line.trim()) {
-                    currentResult.content += (currentResult.content ? ' ' : '') + line;
-                }
-            }
-
-            if (currentResult) results.push(currentResult);
-            return results;
         }
 
         function renderToolResult(content, toolName) {
@@ -921,25 +900,19 @@
         }
 
         function renderMessage(message, index) {
-            console.log('[renderMessage] Input:', message);
+            if (DEBUG) console.log('[renderMessage] Input:', message);
 
-            // Try multiple fields to find the role
-            let role = message.role || message.type || message.kind || 'unknown';
+            // Detect role from message
+            let role = message.role || message.type || 'unknown';
 
-            // If message has a 'data' field, check if the actual message is nested
-            if (message.data && typeof message.data === 'object') {
-                if (message.data.role) role = message.data.role;
-                if (message.data.type) role = message.data.type;
-            }
-
-            console.log('[renderMessage] Detected role:', role);
+            if (DEBUG) console.log('[renderMessage] Detected role:', role);
 
             const messageClass = `message ${role}`;
-            const messageId = `msg-${Date.now()}-${index}`;
+            const messageId = `msg-${messageCounter++}`;
             const rawId = `raw-${messageId}`;
             const renderedId = `rendered-${messageId}`;
 
-            console.log(`Rendering ${role} message #${index}, rawId: ${rawId}`);
+            if (DEBUG) console.log(`Rendering ${role} message #${index}, rawId: ${rawId}`);
 
             let bubbleHTML = '';
 
@@ -957,21 +930,18 @@
             const roleHeader = `
                 <div class="message-role">
                     <span>${displayRole}${message.name ? ` (${message.name})` : ''}</span>
-                    ${role !== 'tool' ? `<span class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')" style="color: #e2e8f0 !important; cursor: pointer;">{ } Raw</span>` : ''}
-                    ${role === 'tool' ? `<span class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')" style="color: #ffffff; cursor: pointer;">▼ Expand</span>` : ''}
+                    ${role !== 'tool' ? `<span class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')">{ } Raw</span>` : ''}
+                    ${role === 'tool' ? `<span class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')">▼ Expand</span>` : ''}
                 </div>
             `;
 
             // Build rendered view
             let renderedHTML = '';
 
-            // Extract content from message (handle nested structures)
-            let content = message.content;
-            if (!content && message.data && message.data.content) {
-                content = message.data.content;
-            }
+            // Extract content from message
+            const content = message.content;
 
-            console.log('[renderMessage] Content:', content);
+            if (DEBUG) console.log('[renderMessage] Content:', content);
 
             // Skip rendered view for tool messages (they only show raw JSON)
             if (role !== 'tool') {
@@ -1026,7 +996,7 @@
             if (role === 'tool') {
                 bubbleHTML = `
                     ${roleHeader}
-                    <div class="tool-content collapsed" id="${messageId}">
+                    <div class="tool-content custom-scrollbar collapsed" id="${messageId}">
                         <pre>${rawJSON}</pre>
                     </div>
                 `;
@@ -1052,26 +1022,13 @@
         }
 
         function toggleRaw(rawId, renderedId) {
-            console.log('[toggleRaw] Called with:', { rawId, renderedId });
+            if (DEBUG) console.log('[toggleRaw] Called with:', { rawId, renderedId });
             const rawView = document.getElementById(rawId);
             const renderedView = document.getElementById(renderedId);
 
-            console.log('[toggleRaw] Elements:', { rawView, renderedView });
-            console.log('[toggleRaw] Classes before:', {
-                raw: rawView?.className,
-                rendered: renderedView?.className
-            });
-
             if (rawView && renderedView) {
-                const wasHidden = rawView.classList.contains('hidden');
                 rawView.classList.toggle('hidden');
                 renderedView.classList.toggle('hidden');
-
-                console.log('[toggleRaw] Classes after:', {
-                    raw: rawView.className,
-                    rendered: renderedView.className,
-                    rawNowVisible: !rawView.classList.contains('hidden')
-                });
             } else {
                 console.error('[toggleRaw] Missing elements!', { rawView, renderedView });
             }
@@ -1111,9 +1068,9 @@
 
             if (Array.isArray(data)) {
                 // Array of messages - render each one
-                console.log('[Renderer] Rendering array of', data.length, 'messages');
+                if (DEBUG) console.log('[Renderer] Rendering array of', data.length, 'messages');
                 data.forEach((message, index) => {
-                    console.log(`[Renderer] Message ${index}:`, {
+                    if (DEBUG) console.log(`[Renderer] Message ${index}:`, {
                         role: message.role || message.type,
                         hasContent: !!message.content,
                         contentType: Array.isArray(message.content) ? 'array' : typeof message.content,
@@ -1123,17 +1080,17 @@
                 });
             } else if (typeof data === 'object' && (data.role || data.type)) {
                 // Single message object with role
-                console.log('[Renderer] Rendering single message with role:', data.role || data.type);
+                if (DEBUG) console.log('[Renderer] Rendering single message with role:', data.role || data.type);
                 conversationHTML += renderMessage(data, 0);
             } else if (typeof data === 'object' && data.messages && Array.isArray(data.messages)) {
                 // Object containing messages array
-                console.log('[Renderer] Rendering messages field with', data.messages.length, 'messages');
+                if (DEBUG) console.log('[Renderer] Rendering messages field with', data.messages.length, 'messages');
                 data.messages.forEach((message, index) => {
                     conversationHTML += renderMessage(message, index);
                 });
             } else if (typeof data === 'string') {
                 // Plain string - wrap as a message
-                console.log('[Renderer] Rendering plain string');
+                if (DEBUG) console.log('[Renderer] Rendering plain string');
                 conversationHTML += renderMessage({
                     role: 'assistant',
                     content: data,
@@ -1141,7 +1098,7 @@
                 }, 0);
             } else {
                 // Generic object - display as formatted JSON
-                console.log('[Renderer] Rendering generic object as JSON');
+                if (DEBUG) console.log('[Renderer] Rendering generic object as JSON');
                 conversationHTML += renderMessage({
                     role: 'assistant',
                     content: JSON.stringify(data, null, 2),
@@ -1179,22 +1136,24 @@
         window.addEventListener('message', (event) => {
             const { type, data, metadata } = event.data;
 
-            console.log('===========================================');
-            console.log('[Renderer] Received message from LangSmith');
-            console.log('[Renderer] Type:', type);
-            console.log('[Renderer] Data structure:', {
-                isArray: Array.isArray(data),
-                isObject: typeof data === 'object',
-                hasRole: data?.role || data?.type,
-                hasMessages: data?.messages,
-                dataKeys: data ? Object.keys(data) : null
-            });
-            console.log('[Renderer] Full data:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
-            console.log('===========================================');
+            if (DEBUG) {
+                console.log('===========================================');
+                console.log('[Renderer] Received message from LangSmith');
+                console.log('[Renderer] Type:', type);
+                console.log('[Renderer] Data structure:', {
+                    isArray: Array.isArray(data),
+                    isObject: typeof data === 'object',
+                    hasRole: data?.role || data?.type,
+                    hasMessages: data?.messages,
+                    dataKeys: data ? Object.keys(data) : null
+                });
+                console.log('[Renderer] Full data:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
+                console.log('===========================================');
+            }
 
             // Focus on rendering the data (the output)
             if (!data) {
-                console.warn('[Renderer] No data to display');
+                if (DEBUG) console.warn('[Renderer] No data to display');
                 return;
             }
 
