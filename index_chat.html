@@ -41,9 +41,25 @@
             --btn-teal-bg: #14b8a6;
             --btn-teal-border: #0d9488;
             --btn-teal-hover: #0d9488;
+            --btn-teal-hover-border: #0f766e;
             --btn-amber-bg: #f59e0b;
             --btn-amber-border: #d97706;
             --btn-amber-hover: #d97706;
+            --btn-amber-hover-border: #b45309;
+
+            /* Code colors */
+            --code-inline-bg: rgba(0, 0, 0, 0.05);
+            --code-inline-color: #991b1b;
+            --json-key: #0369a1;
+            --json-string: #15803d;
+            --json-number: #0369a1;
+            --json-boolean: #be123c;
+            --json-null: #6b7280;
+
+            /* Dimensions */
+            --max-content-height: 400px;
+            --transition-duration: 150ms;
+            --debounce-delay: 50ms;
 
             /* Fonts */
             --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -90,7 +106,12 @@
             margin-bottom: 20px;
             padding: 0;
             animation: fadeIn 0.3s ease-out;
-            clear: both;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .message {
+                animation: none;
+            }
         }
 
         @keyframes fadeIn {
@@ -166,7 +187,7 @@
         .tool-toggle:hover {
             background: var(--btn-amber-hover);
             color: var(--bg-white);
-            border-color: #b45309;
+            border-color: var(--btn-amber-hover-border);
         }
 
         /* Shared scrollbar styles */
@@ -190,7 +211,7 @@
 
         .tool-content {
             margin-top: 8px;
-            max-height: 400px;
+            max-height: var(--max-content-height);
             overflow-y: auto;
             background: var(--bg-white);
             border: 1px solid var(--border-medium);
@@ -232,10 +253,15 @@
 
         .message-role .raw-toggle:hover {
             background: var(--btn-teal-hover);
-            border-color: #0f766e;
+            border-color: var(--btn-teal-hover-border);
             color: var(--bg-white);
             transform: translateY(-1px);
             box-shadow: 0 2px 6px rgba(20, 184, 166, 0.3);
+        }
+
+        .message-role button {
+            background: none;
+            font-family: inherit;
         }
 
         .raw-view {
@@ -278,7 +304,6 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
-            opacity: 1;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -363,12 +388,12 @@
         }
 
         .markdown-content code {
-            background: rgba(0, 0, 0, 0.05);
+            background: var(--code-inline-bg);
             padding: 2px 6px;
             border-radius: 6px;
             font-family: var(--font-mono);
             font-size: 0.85em;
-            color: #991b1b;
+            color: var(--code-inline-color);
         }
 
         .markdown-content pre {
@@ -469,23 +494,23 @@
         }
 
         .json-key {
-            color: #0369a1;
+            color: var(--json-key);
         }
 
         .json-string {
-            color: #15803d;
+            color: var(--json-string);
         }
 
         .json-number {
-            color: #0369a1;
+            color: var(--json-number);
         }
 
         .json-boolean {
-            color: #be123c;
+            color: var(--json-boolean);
         }
 
         .json-null {
-            color: #6b7280;
+            color: var(--json-null);
         }
 
         .tool-calls {
@@ -543,23 +568,23 @@
         }
 
         .tool-arguments .json-key {
-            color: #0369a1;
+            color: var(--json-key);
         }
 
         .tool-arguments .json-string {
-            color: #15803d;
+            color: var(--json-string);
         }
 
         .tool-arguments .json-number {
-            color: #0369a1;
+            color: var(--json-number);
         }
 
         .tool-arguments .json-boolean {
-            color: #be123c;
+            color: var(--json-boolean);
         }
 
         .tool-result {
-            max-height: 400px;
+            max-height: var(--max-content-height);
             overflow-y: auto;
             background: var(--bg-white);
             border: 1px solid var(--border-medium);
@@ -630,9 +655,31 @@
     </div>
 
     <script>
-        const DEBUG = false; // Set to true for debug logging
-        const conversationsContainer = document.getElementById('conversations');
-        let messageCounter = 0; // Prevents ID collisions
+        // Wrap in IIFE to avoid global namespace pollution
+        (function() {
+            'use strict';
+
+            const DEBUG = false; // Set to true for debug logging
+            const conversationsContainer = document.getElementById('conversations');
+            let messageCounter = 0; // Prevents ID collisions
+
+            // Security: HTML escape function to prevent XSS
+            function escapeHtml(text) {
+                if (text == null) return '';
+                const div = document.createElement('div');
+                div.textContent = String(text);
+                return div.innerHTML;
+            }
+
+            // Safely stringify objects, handling circular references
+            function safeStringify(obj, indent = 2) {
+                try {
+                    return JSON.stringify(obj, null, indent);
+                } catch (e) {
+                    if (DEBUG) console.warn('[safeStringify] Circular reference or non-serializable:', e);
+                    return '[Unable to serialize: circular reference or non-serializable object]';
+                }
+            }
 
         // Simple syntax highlighting function
         function highlightCode(code, lang) {
@@ -649,10 +696,11 @@
                 py: /\b(def|class|import|from|return|if|else|elif|for|while|try|except|with|as|async|await|lambda|in|and|or|not|is|True|False|None)\b/g
             };
 
-            // Match strings (before other replacements to preserve them)
+            // Match strings (safer regex with length limit to prevent catastrophic backtracking)
             const stringMatches = [];
             let stringIndex = 0;
-            code = code.replace(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, (match) => {
+            // Simplified string matching - handles common cases without complex lookahead
+            code = code.replace(/(["'`])((?:\\.|[^\1\\]){0,1000}?)\1/g, (match, quote, content) => {
                 const placeholder = `__STRING_${stringIndex}__`;
                 stringMatches[stringIndex] = `<span class="string">${match}</span>`;
                 stringIndex++;
@@ -691,34 +739,31 @@
             return code;
         }
 
-        // Wait for marked to load, then initialize
-        let markedConfigured = false;
+            // Wait for marked to load, then initialize
+            function initializeMarked() {
+                if (typeof marked !== 'undefined') {
+                    try {
+                        console.log('Initializing marked, version:', marked.version || 'unknown');
 
-        function initializeMarked() {
-            if (typeof marked !== 'undefined') {
-                try {
-                    console.log('Initializing marked, version:', marked.version || 'unknown');
+                        // Create custom renderer
+                        const renderer = {
+                            code(code, language) {
+                                const lang = (language || 'text').toLowerCase();
+                                const highlighted = lang === 'json' ? syntaxHighlightJSON(code) : highlightCode(code, lang);
+                                return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
+                            }
+                        };
 
-                    // Create custom renderer
-                    const renderer = {
-                        code(code, language) {
-                            const lang = (language || 'text').toLowerCase();
-                            const highlighted = lang === 'json' ? syntaxHighlightJSON(code) : highlightCode(code, lang);
-                            return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
-                        }
-                    };
-
-                    // Configure marked with the renderer
-                    marked.use({ renderer });
-                    markedConfigured = true;
-                    console.log('Marked configured successfully');
-                } catch (e) {
-                    console.error('Could not configure marked renderer:', e);
+                        // Configure marked with the renderer
+                        marked.use({ renderer });
+                        console.log('Marked configured successfully');
+                    } catch (e) {
+                        console.error('Could not configure marked renderer:', e);
+                    }
+                } else {
+                    console.error('marked library not available!');
                 }
-            } else {
-                console.error('marked library not available!');
             }
-        }
 
         // Initialize when DOM is ready
         if (document.readyState === 'loading') {
@@ -805,32 +850,36 @@
             });
         }
 
-        // Helper to extract text from common field names
-        function extractTextField(obj) {
-            const fields = ['answer', 'output', 'text', 'content', 'output_answer', 'message', 'response', 'result'];
-            for (const field of fields) {
-                if (obj[field] && typeof obj[field] === 'string') {
-                    return obj[field];
+            // Helper to extract text from common field names
+            function extractTextField(obj) {
+                const fields = ['answer', 'output', 'text', 'content', 'output_answer', 'message', 'response', 'result'];
+                for (const field of fields) {
+                    const value = obj[field];
+                    if (typeof value === 'string' && value.trim().length > 0) {
+                        return value;
+                    }
                 }
+                return null;
             }
-            return null;
-        }
 
         function formatContent(content) {
             if (!content) return '';
 
             // Check if content is an array of content blocks (LangChain structure)
             if (Array.isArray(content)) {
-                // Extract text from content blocks
-                let textContent = '';
+                // Extract text from content blocks - use array for performance
+                const textParts = [];
                 content.forEach(block => {
-                    if (block.type === 'text' && block.text) {
-                        textContent += block.text;
+                    if (block && block.type === 'text' && block.text) {
+                        textParts.push(block.text);
                     } else if (typeof block === 'string') {
-                        textContent += block;
+                        textParts.push(block);
+                    } else if (block && block.type === 'tool_use' && DEBUG) {
+                        console.log('[formatContent] Skipping tool_use block:', block.name);
                     }
                 });
 
+                const textContent = textParts.join('');
                 if (textContent) {
                     // Parse the extracted text as markdown
                     const html = parseMarkdown(textContent);
@@ -922,16 +971,18 @@
                 'human': 'Human',
                 'assistant': 'AI Assistant',
                 'ai': 'AI Assistant',
-                'tool': 'Tool'
+                'tool': 'Tool',
+                'unknown': 'Unknown'
             };
-            const displayRole = roleDisplayNames[role] || role;
+            const displayRole = roleDisplayNames[role] || escapeHtml(role);
+            const escapedName = message.name ? ` (${escapeHtml(message.name)})` : '';
 
             // Add role header with appropriate toggles
             const roleHeader = `
                 <div class="message-role">
-                    <span>${displayRole}${message.name ? ` (${message.name})` : ''}</span>
-                    ${role !== 'tool' ? `<span class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')">{ } Raw</span>` : ''}
-                    ${role === 'tool' ? `<span class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')">▼ Expand</span>` : ''}
+                    <span>${displayRole}${escapedName}</span>
+                    ${role !== 'tool' ? `<button class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')" aria-label="Toggle raw JSON view" aria-expanded="false" aria-controls="${rawId}">{ } Raw</button>` : ''}
+                    ${role === 'tool' ? `<button class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')" aria-label="Expand tool output" aria-expanded="false" aria-controls="${messageId}">▼ Expand</button>` : ''}
                 </div>
             `;
 
@@ -955,37 +1006,40 @@
                     }
                 }
 
-                // Tool calls (for assistant messages)
+                // Tool calls (for assistant messages) - use array for performance
                 if (message.tool_calls && message.tool_calls.length > 0) {
-                    renderedHTML += '<div class="tool-calls">';
+                    const toolCallParts = ['<div class="tool-calls">'];
                     for (let toolCall of message.tool_calls) {
                         // Handle both nested function structure and flat structure
                         const func = toolCall.function || toolCall;
-                        const toolName = func.name || toolCall.name || 'Unknown Tool';
+                        const toolName = escapeHtml(func.name || toolCall.name || 'Unknown Tool');
                         const toolArgs = func.arguments || toolCall.args;
+                        const toolId = escapeHtml(toolCall.id || '');
 
                         let argsHTML = '';
-                        if (toolArgs) {
+                        if (toolArgs !== undefined && toolArgs !== null) {
                             // Try to parse and format arguments as JSON
                             if (typeof toolArgs === 'object') {
                                 argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
                             } else if (isJSON(toolArgs)) {
                                 argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
                             } else {
-                                argsHTML = `<div class="tool-arguments">${toolArgs}</div>`;
+                                argsHTML = `<div class="tool-arguments">${escapeHtml(String(toolArgs))}</div>`;
                             }
                         }
-                        renderedHTML += `
+
+                        toolCallParts.push(`
                             <div class="tool-call">
                                 <div class="tool-call-header">
                                     <span class="tool-name">${toolName}</span>
-                                    <span class="tool-id">${toolCall.id || ''}</span>
+                                    <span class="tool-id">${toolId}</span>
                                 </div>
                                 ${argsHTML}
                             </div>
-                        `;
+                        `);
                     }
-                    renderedHTML += '</div>';
+                    toolCallParts.push('</div>');
+                    renderedHTML += toolCallParts.join('');
                 }
             }
 
@@ -1034,77 +1088,96 @@
             }
         }
 
-        function toggleTool(id) {
-            const element = document.getElementById(id);
-            const bubble = element.parentElement;
-            const toggle = bubble.querySelector('.tool-toggle');
+            function toggleTool(id) {
+                const element = document.getElementById(id);
+                if (!element) {
+                    console.error(`[toggleTool] Element with id "${id}" not found`);
+                    return;
+                }
 
-            if (element.classList.contains('collapsed')) {
-                element.classList.remove('collapsed');
-                if (toggle) toggle.textContent = '▲ Click to collapse';
-            } else {
-                element.classList.add('collapsed');
-                if (toggle) toggle.textContent = '▼ Click to expand';
+                const bubble = element.parentElement;
+                if (!bubble) {
+                    console.error(`[toggleTool] Parent element not found for id "${id}"`);
+                    return;
+                }
+
+                const toggle = bubble.querySelector('.tool-toggle');
+
+                if (element.classList.contains('collapsed')) {
+                    element.classList.remove('collapsed');
+                    if (toggle) {
+                        toggle.textContent = '▲ Click to collapse';
+                        toggle.setAttribute('aria-expanded', 'true');
+                    }
+                } else {
+                    element.classList.add('collapsed');
+                    if (toggle) {
+                        toggle.textContent = '▼ Click to expand';
+                        toggle.setAttribute('aria-expanded', 'false');
+                    }
+                }
             }
-        }
 
         // Debounce rendering to prevent flashing from multiple rapid updates
         let renderTimeout = null;
         let isUpdating = false;
 
-        function performRender(data) {
-            // Build new content first (offscreen) to avoid flash
-            const conversationCard = document.createElement('div');
-            conversationCard.className = 'conversation';
+            function performRender(data) {
+                // Build new content first (offscreen) to avoid flash
+                const conversationCard = document.createElement('div');
+                conversationCard.className = 'conversation';
 
-            let conversationHTML = '';
+                // Use array for better performance with many messages
+                const messageParts = [];
 
-            // data can be:
-            // - Array of message objects (standard chat output with multiple messages)
-            // - Single message object
-            // - Object with messages field
-            // - String (simple text output)
-            // - Generic object (fallback to JSON display)
+                // data can be:
+                // - Array of message objects (standard chat output with multiple messages)
+                // - Single message object
+                // - Object with messages field
+                // - String (simple text output)
+                // - Generic object (fallback to JSON display)
 
-            if (Array.isArray(data)) {
-                // Array of messages - render each one
-                if (DEBUG) console.log('[Renderer] Rendering array of', data.length, 'messages');
-                data.forEach((message, index) => {
-                    if (DEBUG) console.log(`[Renderer] Message ${index}:`, {
-                        role: message.role || message.type,
-                        hasContent: !!message.content,
-                        contentType: Array.isArray(message.content) ? 'array' : typeof message.content,
-                        hasToolCalls: !!message.tool_calls
+                if (Array.isArray(data)) {
+                    // Array of messages - render each one
+                    if (DEBUG) console.log('[Renderer] Rendering array of', data.length, 'messages');
+                    data.forEach((message, index) => {
+                        if (DEBUG) console.log(`[Renderer] Message ${index}:`, {
+                            role: message.role || message.type,
+                            hasContent: !!message.content,
+                            contentType: Array.isArray(message.content) ? 'array' : typeof message.content,
+                            hasToolCalls: !!message.tool_calls
+                        });
+                        messageParts.push(renderMessage(message, index));
                     });
-                    conversationHTML += renderMessage(message, index);
-                });
-            } else if (typeof data === 'object' && (data.role || data.type)) {
-                // Single message object with role
-                if (DEBUG) console.log('[Renderer] Rendering single message with role:', data.role || data.type);
-                conversationHTML += renderMessage(data, 0);
-            } else if (typeof data === 'object' && data.messages && Array.isArray(data.messages)) {
-                // Object containing messages array
-                if (DEBUG) console.log('[Renderer] Rendering messages field with', data.messages.length, 'messages');
-                data.messages.forEach((message, index) => {
-                    conversationHTML += renderMessage(message, index);
-                });
-            } else if (typeof data === 'string') {
-                // Plain string - wrap as a message
-                if (DEBUG) console.log('[Renderer] Rendering plain string');
-                conversationHTML += renderMessage({
-                    role: 'assistant',
-                    content: data,
-                    id: 'msg-' + Date.now()
-                }, 0);
-            } else {
-                // Generic object - display as formatted JSON
-                if (DEBUG) console.log('[Renderer] Rendering generic object as JSON');
-                conversationHTML += renderMessage({
-                    role: 'assistant',
-                    content: JSON.stringify(data, null, 2),
-                    id: 'msg-' + Date.now()
-                }, 0);
-            }
+                } else if (typeof data === 'object' && (data.role || data.type)) {
+                    // Single message object with role
+                    if (DEBUG) console.log('[Renderer] Rendering single message with role:', data.role || data.type);
+                    messageParts.push(renderMessage(data, 0));
+                } else if (typeof data === 'object' && data.messages && Array.isArray(data.messages)) {
+                    // Object containing messages array
+                    if (DEBUG) console.log('[Renderer] Rendering messages field with', data.messages.length, 'messages');
+                    data.messages.forEach((message, index) => {
+                        messageParts.push(renderMessage(message, index));
+                    });
+                } else if (typeof data === 'string') {
+                    // Plain string - wrap as a message
+                    if (DEBUG) console.log('[Renderer] Rendering plain string');
+                    messageParts.push(renderMessage({
+                        role: 'assistant',
+                        content: data,
+                        id: 'msg-' + Date.now()
+                    }, 0));
+                } else {
+                    // Generic object - display as formatted JSON
+                    if (DEBUG) console.log('[Renderer] Rendering generic object as JSON');
+                    messageParts.push(renderMessage({
+                        role: 'assistant',
+                        content: safeStringify(data),
+                        id: 'msg-' + Date.now()
+                    }, 0));
+                }
+
+                const conversationHTML = messageParts.join('');
 
             if (conversationHTML) {
                 conversationCard.innerHTML = conversationHTML;
@@ -1115,13 +1188,15 @@
                     isUpdating = true;
                     existingCard.classList.add('updating');
 
+                    // Use CSS transition duration (150ms)
                     setTimeout(() => {
                         conversationsContainer.replaceChildren(conversationCard);
-                        // Trigger reflow to ensure CSS transition works
+                        // Force reflow to ensure CSS transition works properly
+                        // Reading offsetWidth triggers a synchronous layout calculation
                         void conversationCard.offsetWidth;
                         conversationCard.classList.remove('updating');
                         isUpdating = false;
-                    }, 150); // Match CSS transition duration
+                    }, 150);
                 } else {
                     // First render, no transition needed
                     conversationsContainer.replaceChildren(conversationCard);
@@ -1162,14 +1237,25 @@
                 clearTimeout(renderTimeout);
             }
 
+            // Debounce delay (50ms)
             renderTimeout = setTimeout(() => {
                 performRender(data);
                 renderTimeout = null;
-            }, 50); // Small delay to batch rapid updates
+            }, 50);
         });
 
-        console.log('Chat LangChain Custom Output Renderer is ready!');
-        console.log('Listening for postMessage events...');
+            // Cleanup on unload
+            window.addEventListener('beforeunload', () => {
+                if (renderTimeout) {
+                    clearTimeout(renderTimeout);
+                    renderTimeout = null;
+                }
+            });
+
+            console.log('Chat LangChain Custom Output Renderer is ready!');
+            console.log('Listening for postMessage events...');
+
+        })(); // End IIFE
     </script>
 </body>
 </html>
