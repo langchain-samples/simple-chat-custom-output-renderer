@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo - Chat LangChain Renderer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-panel {
+            background: #1e293b;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+
+        h1 {
+            color: #f1f5f9;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #94a3b8;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        select {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 10px;
+            color: #e2e8f0;
+            font-family: inherit;
+            font-size: 14px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:active {
+            background: #4c5fc7;
+        }
+
+        .info {
+            background: #1e3a5f;
+            border: 1px solid #2563eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 20px;
+            color: #93c5fd;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .trace-info {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 20px;
+            color: #94a3b8;
+            font-size: 12px;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .trace-info div {
+            margin-bottom: 6px;
+        }
+
+        .trace-info .label {
+            color: #64748b;
+            margin-right: 8px;
+        }
+
+        iframe {
+            flex: 1;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            background: #0f172a;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="control-panel">
+            <h1>Demo: Chat LangChain Traces</h1>
+
+            <div class="info">
+                This page loads actual traces from your LangSmith Chat-LangChain project.
+                Select a trace and click "Load Trace" to see it in the custom renderer.
+            </div>
+
+            <div class="form-group">
+                <label>Select Trace</label>
+                <select id="traceSelect">
+                    <option value="">Loading traces...</option>
+                </select>
+            </div>
+
+            <button onclick="loadTrace()">Load Trace</button>
+
+            <div class="trace-info" id="traceInfo" style="display: none;">
+                <div><span class="label">Trace ID:</span><span id="traceId"></span></div>
+                <div><span class="label">Messages:</span><span id="messageCount"></span></div>
+                <div><span class="label">File:</span><span id="fileName"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <iframe id="rendererFrame" src="index_chat.html?v=14"></iframe>
+    </div>
+
+    <script>
+        // Available trace files (English only)
+        const traceFiles = [
+            '019b384e-acfc-7490-8139-044ffbe1e527.json',
+            '019b384e-8fc0-7172-876a-1fba09e5c78d.json',
+            '019b3853-7f98-7933-8cc0-2571edfeb95a.json',
+            '019b384e-60f1-70c3-84cd-d6ff3e604b99.json'
+        ];
+
+        // Populate trace select dropdown
+        const traceSelect = document.getElementById('traceSelect');
+        traceSelect.innerHTML = '';
+        traceFiles.forEach((file, index) => {
+            const option = document.createElement('option');
+            option.value = file;
+            option.textContent = `Trace ${index + 1}: ${file.split('.')[0]}`;
+            traceSelect.appendChild(option);
+        });
+        traceSelect.selectedIndex = 0;
+
+        async function loadTrace() {
+            const selectedFile = traceSelect.value;
+            if (!selectedFile) {
+                alert('Please select a trace');
+                return;
+            }
+
+            try {
+                // Fetch the trace file
+                const response = await fetch(`/traces/${selectedFile}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to load trace: ${response.statusText}`);
+                }
+
+                const traceData = await response.json();
+
+                // Update trace info
+                document.getElementById('traceInfo').style.display = 'block';
+                document.getElementById('traceId').textContent = selectedFile.split('.')[0];
+                document.getElementById('messageCount').textContent = traceData.length;
+                document.getElementById('fileName').textContent = selectedFile;
+
+                // Send to renderer via postMessage
+                const iframe = document.getElementById('rendererFrame');
+                const message = {
+                    type: 'output',
+                    data: traceData,
+                    metadata: {
+                        trace_id: selectedFile.split('.')[0],
+                        message_count: traceData.length
+                    }
+                };
+
+                iframe.contentWindow.postMessage(message, '*');
+
+                console.log('Trace loaded:', selectedFile);
+            } catch (error) {
+                console.error('Error loading trace:', error);
+                alert(`Error loading trace: ${error.message}`);
+            }
+        }
+
+        // Auto-load first trace on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                console.log('Auto-loading first trace...');
+                loadTrace();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

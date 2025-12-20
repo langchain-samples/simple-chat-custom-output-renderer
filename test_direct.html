@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Test - Chat LangChain Renderer</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .message.user {
+            justify-content: flex-start;
+        }
+
+        .message.assistant,
+        .message.tool {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 75%;
+            padding: 16px 18px;
+            border-radius: 18px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.tool .message-bubble {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-role {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            opacity: 0.7;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .tool-toggle {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 10px;
+            opacity: 0.9;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-toggle:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.15);
+            color: #cbd5e1;
+        }
+
+        .raw-toggle {
+            display: inline-block !important;
+            margin-left: 8px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 1;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0 !important;
+            font-weight: 500;
+        }
+
+        .raw-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: #ffffff !important;
+        }
+
+        .message-content {
+            color: #ffffff;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 15px;
+        }
+
+        .message-content pre {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .raw-view {
+            display: none;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #c9d1d9;
+            overflow-x: auto;
+        }
+
+        .raw-view pre {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            color: #c9d1d9;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .json-key { color: #79c0ff; }
+        .json-string { color: #a5d6ff; }
+        .json-number { color: #79c0ff; }
+        .json-boolean { color: #ff7b72; }
+        .json-null { color: #8b949e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        // Simple test message
+        const testMessages = [
+            {
+                role: 'user',
+                content: 'What is LangChain?'
+            },
+            {
+                role: 'assistant',
+                content: 'LangChain is a framework for developing applications powered by language models. Here\'s a simple example:\n\n```python\nfrom langchain import OpenAI\n\nllm = OpenAI(temperature=0.9)\nresult = llm("Hello world!")\nprint(result)\n```\n\nIt provides tools for **prompt management**, **chains**, and **agents**.'
+            },
+            {
+                role: 'tool',
+                name: 'search',
+                content: '{"results": ["result1", "result2"], "count": 2}'
+            }
+        ];
+
+        function syntaxHighlightJSON(json) {
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json, null, 2);
+            } else {
+                try {
+                    const parsed = JSON.parse(json);
+                    json = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    console.warn('Failed to parse JSON:', e);
+                }
+            }
+
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        function toggleRaw(rawId, renderedId) {
+            console.log('[toggleRaw] Called with:', { rawId, renderedId });
+            const rawView = document.getElementById(rawId);
+            const renderedView = document.getElementById(renderedId);
+
+            console.log('[toggleRaw] Elements:', { rawView, renderedView });
+
+            if (rawView && renderedView) {
+                if (rawView.style.display === 'none' || rawView.style.display === '') {
+                    rawView.style.display = 'block';
+                    renderedView.style.display = 'none';
+                    console.log('[toggleRaw] Now showing RAW');
+                } else {
+                    rawView.style.display = 'none';
+                    renderedView.style.display = 'block';
+                    console.log('[toggleRaw] Now showing RENDERED');
+                }
+            } else {
+                console.error('[toggleRaw] Missing elements!');
+            }
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messages');
+
+            testMessages.forEach((message, index) => {
+                const messageId = `msg-${index}`;
+                const rawId = `raw-${index}`;
+                const renderedId = `rendered-${index}`;
+                const role = message.role || 'unknown';
+
+                const roleHeader = `
+                    <div class="message-role">
+                        ${role}${message.name ? ` (${message.name})` : ''}
+                        <span class="raw-toggle" onclick="toggleRaw('${rawId}', '${renderedId}')" style="color: #e2e8f0 !important;">{ } Raw</span>
+                    </div>
+                `;
+
+                let content = message.content || '';
+                let renderedContent = '';
+
+                // Check if content is JSON
+                const isJSON = (str) => {
+                    if (typeof str !== 'string') return false;
+                    try {
+                        JSON.parse(str);
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                };
+
+                if (typeof content === 'object') {
+                    // Already an object, stringify and highlight
+                    renderedContent = '<pre>' + syntaxHighlightJSON(content) + '</pre>';
+                } else if (isJSON(content)) {
+                    // String that is valid JSON
+                    renderedContent = '<pre>' + syntaxHighlightJSON(content) + '</pre>';
+                } else {
+                    // Regular text/markdown
+                    renderedContent = marked.parse ? marked.parse(content) : marked(content);
+                }
+
+                const bubbleHTML = `
+                    <div class="message ${role}" id="${messageId}">
+                        <div class="message-bubble">
+                            ${roleHeader}
+                            <div id="${renderedId}" class="rendered-view">
+                                <div class="message-content">${renderedContent}</div>
+                            </div>
+                            <div id="${rawId}" class="raw-view">
+                                <pre>${syntaxHighlightJSON(message)}</pre>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML += bubbleHTML;
+            });
+        }
+
+        // Wait for marked to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderMessages);
+        } else {
+            renderMessages();
+        }
+    </script>
+</body>
+</html>

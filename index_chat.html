@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat LangChain Custom Output Renderer</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .conversation {
+            padding: 0;
+            margin-bottom: 0;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 20px;
+            padding: 0;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-start;
+        }
+
+        .message.assistant,
+        .message.tool {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 75%;
+            padding: 16px 18px;
+            border-radius: 18px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #4a6fb5 0%, #2d5a9e 100%);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.tool .message-bubble {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.tool .message-bubble:hover {
+            border-color: #475569;
+        }
+
+        .tool-toggle {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            font-size: 10px;
+            opacity: 0.9;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-toggle:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.15);
+            color: #cbd5e1;
+        }
+
+        .tool-content {
+            margin-top: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 13px;
+            color: #c9d1d9;
+            line-height: 1.5;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+        }
+
+        .tool-content.collapsed {
+            display: none;
+        }
+
+        .tool-content pre {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #c9d1d9;
+        }
+
+        .tool-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tool-content::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+
+        .tool-content::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        .tool-content::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        .raw-toggle {
+            display: inline-block !important;
+            margin-left: 8px;
+            padding: 4px 8px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            opacity: 1;
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0 !important;
+            font-weight: 500;
+        }
+
+        .raw-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: #ffffff !important;
+        }
+
+        .raw-view {
+            overflow-x: auto;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #c9d1d9;
+        }
+
+        /* For non-tool messages, add the box styling */
+        .message:not(.tool) .raw-view {
+            margin-top: 12px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .raw-view pre {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            color: #c9d1d9;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .raw-view.hidden {
+            display: none;
+        }
+
+        .rendered-view.hidden {
+            display: none;
+        }
+
+        .message-role {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .message.user .message-role {
+            color: #dbeafe;
+        }
+
+        .message.assistant .message-role {
+            color: #cbd5e1;
+        }
+
+        .message.tool .message-role {
+            color: #94a3b8;
+        }
+
+        .message-content {
+            color: #ffffff;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 15px;
+        }
+
+        .message.tool .message-content {
+            color: #e2e8f0;
+        }
+
+        /* Markdown Styling */
+        .markdown-content {
+            color: #ffffff;
+        }
+
+        .message.tool .markdown-content {
+            color: #e2e8f0;
+        }
+
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+            margin-top: 16px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        .markdown-content h1:first-child,
+        .markdown-content h2:first-child,
+        .markdown-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .markdown-content h1 { font-size: 1.5em; }
+        .markdown-content h2 { font-size: 1.3em; }
+        .markdown-content h3 { font-size: 1.15em; }
+
+        .markdown-content p {
+            margin-bottom: 12px;
+        }
+
+        .markdown-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .markdown-content ul:last-child,
+        .markdown-content ol:last-child {
+            margin-bottom: 0;
+        }
+
+        .markdown-content li {
+            margin-bottom: 6px;
+        }
+
+        .markdown-content code {
+            background: rgba(110, 118, 129, 0.4);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-size: 0.85em;
+            color: #c9d1d9;
+        }
+
+        .markdown-content pre {
+            background: #161b22;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-bottom: 12px;
+            border: 1px solid #30363d;
+        }
+
+        .markdown-content pre code {
+            background: none;
+            padding: 0;
+            color: #c9d1d9;
+            font-size: 13px;
+            line-height: 1.5;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+        }
+
+        /* GitHub-style syntax highlighting */
+        .markdown-content pre code .keyword {
+            color: #ff7b72;
+        }
+
+        .markdown-content pre code .string {
+            color: #a5d6ff;
+        }
+
+        .markdown-content pre code .comment {
+            color: #8b949e;
+            font-style: italic;
+        }
+
+        .markdown-content pre code .function {
+            color: #d2a8ff;
+        }
+
+        .markdown-content pre code .number {
+            color: #79c0ff;
+        }
+
+        .markdown-content a {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+
+        .markdown-content a:hover {
+            color: #bfdbfe;
+        }
+
+        .markdown-content blockquote {
+            border-left: 4px solid rgba(255, 255, 255, 0.3);
+            padding-left: 16px;
+            margin: 12px 0;
+            opacity: 0.9;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            width: 100%;
+        }
+
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: rgba(0, 0, 0, 0.3);
+            font-weight: 600;
+        }
+
+        /* JSON Syntax Highlighting - GitHub style */
+        .json-container {
+            background: #161b22;
+            padding: 16px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+        }
+
+        .json-container pre {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            overflow-x: visible;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .json-key {
+            color: #79c0ff;
+        }
+
+        .json-string {
+            color: #a5d6ff;
+        }
+
+        .json-number {
+            color: #79c0ff;
+        }
+
+        .json-boolean {
+            color: #ff7b72;
+        }
+
+        .json-null {
+            color: #8b949e;
+        }
+
+        .tool-calls {
+            margin-top: 15px;
+        }
+
+        .tool-call {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .tool-call-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .tool-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fbbf24;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .tool-id {
+            font-size: 11px;
+            color: #64748b;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+
+        .tool-arguments {
+            font-size: 13px;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+            margin-top: 8px;
+            padding: 12px;
+            background: #161b22;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            overflow-x: auto;
+            line-height: 1.5;
+            color: #c9d1d9;
+        }
+
+        .tool-arguments pre {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .tool-arguments .json-key {
+            color: #79c0ff;
+        }
+
+        .tool-arguments .json-string {
+            color: #a5d6ff;
+        }
+
+        .tool-arguments .json-number {
+            color: #79c0ff;
+        }
+
+        .tool-arguments .json-boolean {
+            color: #ff7b72;
+        }
+
+        .tool-result {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #c9d1d9;
+            line-height: 1.5;
+            font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+        }
+
+        .tool-result::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tool-result::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+
+        .tool-result::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        .tool-result::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        .tool-result .markdown-content {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: #e2e8f0;
+        }
+
+        .tool-result .json-container pre {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .search-result {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .search-result-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #93c5fd;
+            margin-bottom: 6px;
+        }
+
+        .search-result-link {
+            font-size: 11px;
+            color: #94a3b8;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .search-result-link:hover {
+            color: #93c5fd;
+        }
+
+        .search-result-content {
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="conversations"></div>
+    </div>
+
+    <script>
+        const conversationsContainer = document.getElementById('conversations');
+
+        // Simple syntax highlighting function
+        function highlightCode(code, lang) {
+            // Escape HTML first
+            code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            // Basic keyword highlighting for common languages
+            const keywords = {
+                javascript: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|new|this)\b/g,
+                python: /\b(def|class|import|from|return|if|else|elif|for|while|try|except|with|as|async|await|lambda|in|and|or|not|is|True|False|None)\b/g,
+                typescript: /\b(const|let|var|function|return|if|else|for|while|class|interface|type|import|export|from|async|await|try|catch|new|this)\b/g,
+                js: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|new|this)\b/g,
+                ts: /\b(const|let|var|function|return|if|else|for|while|class|interface|type|import|export|from|async|await|try|catch|new|this)\b/g,
+                py: /\b(def|class|import|from|return|if|else|elif|for|while|try|except|with|as|async|await|lambda|in|and|or|not|is|True|False|None)\b/g
+            };
+
+            // Match strings (before other replacements to preserve them)
+            const stringMatches = [];
+            let stringIndex = 0;
+            code = code.replace(/(["'`])(?:\\.|(?!\1)[^\\])*\1/g, (match) => {
+                const placeholder = `__STRING_${stringIndex}__`;
+                stringMatches[stringIndex] = `<span class="string">${match}</span>`;
+                stringIndex++;
+                return placeholder;
+            });
+
+            // Match comments
+            const commentMatches = [];
+            let commentIndex = 0;
+            code = code.replace(/(#.*$|\/\/.*$|\/\*[\s\S]*?\*\/)/gm, (match) => {
+                const placeholder = `__COMMENT_${commentIndex}__`;
+                commentMatches[commentIndex] = `<span class="comment">${match}</span>`;
+                commentIndex++;
+                return placeholder;
+            });
+
+            // Highlight keywords based on language
+            const keywordPattern = keywords[lang] || keywords.javascript;
+            if (keywordPattern) {
+                code = code.replace(keywordPattern, '<span class="keyword">$1</span>');
+            }
+
+            // Highlight numbers
+            code = code.replace(/\b\d+(\.\d+)?\b/g, '<span class="number">$&</span>');
+
+            // Restore strings
+            for (let i = 0; i < stringMatches.length; i++) {
+                code = code.replace(`__STRING_${i}__`, stringMatches[i]);
+            }
+
+            // Restore comments
+            for (let i = 0; i < commentMatches.length; i++) {
+                code = code.replace(`__COMMENT_${i}__`, commentMatches[i]);
+            }
+
+            return code;
+        }
+
+        // Wait for marked to load, then initialize
+        let markedConfigured = false;
+
+        function initializeMarked() {
+            if (typeof marked !== 'undefined') {
+                try {
+                    console.log('Initializing marked, version:', marked.version || 'unknown');
+
+                    // Create custom renderer
+                    const renderer = {
+                        code(code, language) {
+                            const lang = (language || 'text').toLowerCase();
+                            const highlighted = lang === 'json' ? syntaxHighlightJSON(code) : highlightCode(code, lang);
+                            return `<pre><code class="language-${lang}">${highlighted}</code></pre>`;
+                        }
+                    };
+
+                    // Configure marked with the renderer
+                    marked.use({ renderer });
+                    markedConfigured = true;
+                    console.log('Marked configured successfully');
+                } catch (e) {
+                    console.error('Could not configure marked renderer:', e);
+                }
+            } else {
+                console.error('marked library not available!');
+            }
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeMarked);
+        } else {
+            initializeMarked();
+        }
+
+        // Parse markdown with syntax highlighting
+        function parseMarkdown(text) {
+            if (typeof marked === 'undefined') {
+                console.warn('marked library not loaded!');
+                return text;
+            }
+
+            try {
+                // Use marked.parse() for version 11.x
+                if (typeof marked.parse === 'function') {
+                    const result = marked.parse(text, {
+                        breaks: true,
+                        gfm: true
+                    });
+                    return result;
+                } else if (typeof marked === 'function') {
+                    // Fallback for older versions
+                    const result = marked(text, {
+                        breaks: true,
+                        gfm: true
+                    });
+                    return result;
+                } else {
+                    console.error('Cannot find marked parsing function');
+                    return text;
+                }
+            } catch (e) {
+                console.error('Markdown parse error:', e, 'Input:', text.substring(0, 100));
+                return text;
+            }
+        }
+
+        function isJSON(str) {
+            if (typeof str !== 'string') return false;
+            try {
+                const result = JSON.parse(str);
+                return typeof result === 'object' && result !== null;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function syntaxHighlightJSON(json) {
+            // Pretty-print JSON with 2-space indentation
+            if (typeof json !== 'string') {
+                json = JSON.stringify(json, null, 2);
+            } else {
+                // If it's already a string, try to parse and re-stringify for formatting
+                try {
+                    const parsed = JSON.parse(json);
+                    json = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    // If parsing fails, use as-is
+                    console.warn('Failed to parse JSON for formatting:', e);
+                }
+            }
+
+            // Escape HTML
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+            // Apply syntax highlighting
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'json-number';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) {
+                        cls = 'json-key';
+                    } else {
+                        cls = 'json-string';
+                    }
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-boolean';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+
+        function detectAndFormatJSON(text) {
+            // Try to find JSON objects within text
+            const jsonPattern = /\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/g;
+            let lastIndex = 0;
+            let result = '';
+            let match;
+
+            while ((match = jsonPattern.exec(text)) !== null) {
+                const potentialJSON = match[0];
+                if (isJSON(potentialJSON)) {
+                    // Add text before JSON
+                    result += text.slice(lastIndex, match.index);
+                    // Add formatted JSON
+                    result += `<div class="json-container" style="margin: 8px 0;">${syntaxHighlightJSON(potentialJSON)}</div>`;
+                    lastIndex = jsonPattern.lastIndex;
+                }
+            }
+
+            // Add remaining text
+            if (lastIndex > 0) {
+                result += text.slice(lastIndex);
+                return result;
+            }
+
+            return text;
+        }
+
+        function formatContent(content) {
+            if (!content) return '';
+
+            // If content is an object, stringify it first
+            if (typeof content === 'object') {
+                const formatted = syntaxHighlightJSON(content);
+                return `<div class="json-container"><pre>${formatted}</pre></div>`;
+            }
+
+            // Check if entire content is pure JSON string
+            if (isJSON(content)) {
+                const formatted = syntaxHighlightJSON(content);
+                return `<div class="json-container"><pre>${formatted}</pre></div>`;
+            }
+
+            // Always try to parse as markdown (handles plain text, links, code blocks)
+            const html = parseMarkdown(content);
+            // ALWAYS wrap in markdown-content div, even if no transformation
+            return `<div class="markdown-content">${html}</div>`;
+        }
+
+        function parseSearchResults(content) {
+            // Try to parse search results if they follow a pattern
+            const lines = content.split('\n');
+            const results = [];
+            let currentResult = null;
+
+            for (let line of lines) {
+                if (line.startsWith('Result ')) {
+                    if (currentResult) results.push(currentResult);
+                    currentResult = { content: '' };
+                } else if (line.startsWith('Title: ')) {
+                    if (currentResult) currentResult.title = line.replace('Title: ', '');
+                } else if (line.startsWith('Link: ')) {
+                    if (currentResult) currentResult.link = line.replace('Link: ', '');
+                } else if (line.startsWith('Content: ')) {
+                    if (currentResult) currentResult.content = line.replace('Content: ', '');
+                } else if (currentResult && line.trim()) {
+                    currentResult.content += (currentResult.content ? ' ' : '') + line;
+                }
+            }
+
+            if (currentResult) results.push(currentResult);
+            return results;
+        }
+
+        function renderToolResult(content, toolName) {
+            // If content is an object, stringify it first
+            if (typeof content === 'object') {
+                const formatted = syntaxHighlightJSON(content);
+                return `<div class="json-container"><pre>${formatted}</pre></div>`;
+            }
+
+            // Try to format JSON content
+            if (isJSON(content)) {
+                const formatted = syntaxHighlightJSON(content);
+                return `<div class="json-container"><pre>${formatted}</pre></div>`;
+            }
+
+            // Always try markdown rendering (handles plain text, links, code blocks)
+            const html = parseMarkdown(content);
+            // ALWAYS wrap in markdown-content div
+            return `<div class="markdown-content">${html}</div>`;
+        }
+
+        function renderMessage(message, index) {
+            const role = message.role || 'unknown';
+            const messageClass = `message ${role}`;
+            const messageId = `msg-${Date.now()}-${index}`;
+            const rawId = `raw-${messageId}`;
+            const renderedId = `rendered-${messageId}`;
+
+            console.log(`Rendering ${role} message #${index}, rawId: ${rawId}`);
+
+            let bubbleHTML = '';
+
+            // Add role header with appropriate toggles
+            const roleHeader = `
+                <div class="message-role">
+                    ${role}${message.name ? ` (${message.name})` : ''}
+                    ${role !== 'tool' ? `<span class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')" style="color: #e2e8f0 !important;">{ } Raw</span>` : ''}
+                    ${role === 'tool' ? `<span class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')" style="color: #94a3b8;">▼ Expand</span>` : ''}
+                </div>
+            `;
+
+            // Build rendered view
+            let renderedHTML = '';
+
+            // Skip rendered view for tool messages (they only show raw JSON)
+            if (role !== 'tool') {
+                // Content with formatting
+                if (message.content) {
+                    const formattedContent = formatContent(message.content);
+                    if (formattedContent.includes('<div')) {
+                        renderedHTML += formattedContent;
+                    } else {
+                        renderedHTML += `<div class="message-content">${formattedContent}</div>`;
+                    }
+                }
+
+                // Tool calls (for assistant messages)
+                if (message.tool_calls && message.tool_calls.length > 0) {
+                    renderedHTML += '<div class="tool-calls">';
+                    for (let toolCall of message.tool_calls) {
+                        const func = toolCall.function || {};
+                        let argsHTML = '';
+                        if (func.arguments) {
+                            // Try to parse and format arguments as JSON
+                            if (isJSON(func.arguments)) {
+                                argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(func.arguments)}</pre></div>`;
+                            } else {
+                                argsHTML = `<div class="tool-arguments">${func.arguments}</div>`;
+                            }
+                        }
+                        renderedHTML += `
+                            <div class="tool-call">
+                                <div class="tool-call-header">
+                                    <span class="tool-name">${func.name || 'Unknown Tool'}</span>
+                                    <span class="tool-id">${toolCall.id || ''}</span>
+                                </div>
+                                ${argsHTML}
+                            </div>
+                        `;
+                    }
+                    renderedHTML += '</div>';
+                }
+            }
+
+            // Build raw JSON view
+            const rawJSON = syntaxHighlightJSON(message);
+
+            // For tool messages, only show raw JSON in a collapsible container
+            if (role === 'tool') {
+                bubbleHTML = `
+                    ${roleHeader}
+                    <div class="tool-content collapsed" id="${messageId}">
+                        <pre>${rawJSON}</pre>
+                    </div>
+                `;
+            } else {
+                bubbleHTML = `
+                    ${roleHeader}
+                    <div class="rendered-view" id="${renderedId}">
+                        ${renderedHTML}
+                    </div>
+                    <div class="raw-view hidden" id="${rawId}">
+                        <pre>${rawJSON}</pre>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="${messageClass}">
+                    <div class="message-bubble">
+                        ${bubbleHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleRaw(rawId, renderedId) {
+            console.log('[toggleRaw] Called with:', { rawId, renderedId });
+            const rawView = document.getElementById(rawId);
+            const renderedView = document.getElementById(renderedId);
+
+            console.log('[toggleRaw] Elements:', { rawView, renderedView });
+            console.log('[toggleRaw] Classes before:', {
+                raw: rawView?.className,
+                rendered: renderedView?.className
+            });
+
+            if (rawView && renderedView) {
+                const wasHidden = rawView.classList.contains('hidden');
+                rawView.classList.toggle('hidden');
+                renderedView.classList.toggle('hidden');
+
+                console.log('[toggleRaw] Classes after:', {
+                    raw: rawView.className,
+                    rendered: renderedView.className,
+                    rawNowVisible: !rawView.classList.contains('hidden')
+                });
+            } else {
+                console.error('[toggleRaw] Missing elements!', { rawView, renderedView });
+            }
+        }
+
+        function toggleTool(id) {
+            const element = document.getElementById(id);
+            const bubble = element.parentElement;
+            const toggle = bubble.querySelector('.tool-toggle');
+
+            if (element.classList.contains('collapsed')) {
+                element.classList.remove('collapsed');
+                if (toggle) toggle.textContent = '▲ Click to collapse';
+            } else {
+                element.classList.add('collapsed');
+                if (toggle) toggle.textContent = '▼ Click to expand';
+            }
+        }
+
+        window.addEventListener('message', (event) => {
+            const { type, data, metadata } = event.data;
+
+            // Check if data is an array of messages (conversation format)
+            const messages = Array.isArray(data) ? data : [data];
+
+            const conversationCard = document.createElement('div');
+            conversationCard.className = 'conversation';
+
+            // Render each message in the conversation
+            let conversationHTML = '';
+            messages.forEach((message, index) => {
+                conversationHTML += renderMessage(message, index);
+            });
+
+            conversationCard.innerHTML = conversationHTML;
+            conversationsContainer.appendChild(conversationCard);
+        });
+
+        console.log('Chat LangChain Custom Output Renderer is ready!');
+        console.log('Listening for postMessage events...');
+    </script>
+</body>
+</html>
