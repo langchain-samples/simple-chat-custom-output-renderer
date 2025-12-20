@@ -1083,6 +1083,9 @@
                 return;
             }
 
+            // Clear existing content to avoid duplicates
+            conversationsContainer.innerHTML = '';
+
             const conversationCard = document.createElement('div');
             conversationCard.className = 'conversation';
 
