@@ -980,20 +980,61 @@
         window.addEventListener('message', (event) => {
             const { type, data, metadata } = event.data;
 
-            // Check if data is an array of messages (conversation format)
-            const messages = Array.isArray(data) ? data : [data];
+            console.log('[Renderer] Received message:', { type, data, metadata });
+
+            // Focus on rendering the data (the output)
+            if (!data) {
+                console.warn('[Renderer] No data to display');
+                return;
+            }
 
             const conversationCard = document.createElement('div');
             conversationCard.className = 'conversation';
 
-            // Render each message in the conversation
             let conversationHTML = '';
-            messages.forEach((message, index) => {
-                conversationHTML += renderMessage(message, index);
-            });
 
-            conversationCard.innerHTML = conversationHTML;
-            conversationsContainer.appendChild(conversationCard);
+            // data can be:
+            // - Array of message objects (standard chat output with multiple messages)
+            // - Single message object
+            // - Object with messages field
+            // - String (simple text output)
+            // - Generic object (fallback to JSON display)
+
+            if (Array.isArray(data)) {
+                // Array of messages - render each one
+                data.forEach((message, index) => {
+                    conversationHTML += renderMessage(message, index);
+                });
+            } else if (typeof data === 'object' && data.role) {
+                // Single message object with role
+                conversationHTML += renderMessage(data, 0);
+            } else if (typeof data === 'object' && data.messages && Array.isArray(data.messages)) {
+                // Object containing messages array
+                data.messages.forEach((message, index) => {
+                    conversationHTML += renderMessage(message, index);
+                });
+            } else if (typeof data === 'string') {
+                // Plain string - wrap as a message
+                conversationHTML += renderMessage({
+                    role: 'assistant',
+                    content: data,
+                    id: 'msg-' + Date.now()
+                }, 0);
+            } else {
+                // Generic object - display as formatted JSON
+                conversationHTML += renderMessage({
+                    role: 'assistant',
+                    content: JSON.stringify(data, null, 2),
+                    id: 'msg-' + Date.now()
+                }, 0);
+            }
+
+            if (conversationHTML) {
+                conversationCard.innerHTML = conversationHTML;
+                conversationsContainer.appendChild(conversationCard);
+            } else {
+                console.warn('[Renderer] Unable to render data');
+            }
         });
 
         console.log('Chat LangChain Custom Output Renderer is ready!');

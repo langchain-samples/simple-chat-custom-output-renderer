@@ -161,12 +161,18 @@
     </div>
 
     <script>
-        // Available trace files (English only)
+        // Available trace files - new traces from 2025-12-20
         const traceFiles = [
-            '019b384e-acfc-7490-8139-044ffbe1e527.json',
-            '019b384e-8fc0-7172-876a-1fba09e5c78d.json',
-            '019b3853-7f98-7933-8cc0-2571edfeb95a.json',
-            '019b384e-60f1-70c3-84cd-d6ff3e604b99.json'
+            '019b3a32-63e3-7701-b560-e520303c0a5e.json',  // 4 messages
+            '019b3a31-99d7-79c1-b5fc-c3749c4b7dc7.json',  // 14 messages
+            '019b3a31-a9e5-7723-a6b9-cb23056528d2.json',  // 29 messages
+            '019b3a32-220c-7f23-bbb9-1f33b86b5852.json',  // 7 messages
+            '019b3a31-3551-7ba2-a15e-d723ad4ddfbe.json',  // 25 messages
+            '019b3a30-8a46-7412-ac75-d67e7189eee6.json',  // 12 messages
+            '019b3a31-2750-79b2-af97-273252e43b21.json',  // 10 messages
+            '019b3a30-85f4-7fc1-ac10-03d4792fe012.json',  // 17 messages
+            '019b3a30-5b05-7ea0-a0db-4214bf063375.json',  // 2 messages
+            '019b3a30-7c7a-7a60-88e2-fb2880e2e3b8.json'   // 16 messages
         ];
 
         // Populate trace select dropdown
@@ -202,11 +208,12 @@
                 document.getElementById('messageCount').textContent = traceData.length;
                 document.getElementById('fileName').textContent = selectedFile;
 
-                // Send to renderer via postMessage
+                // Send to renderer via postMessage in LangSmith format
+                // For chat applications, the output (data) contains the full conversation
                 const iframe = document.getElementById('rendererFrame');
                 const message = {
                     type: 'output',
-                    data: traceData,
+                    data: traceData,  // Full conversation as the output
                     metadata: {
                         trace_id: selectedFile.split('.')[0],
                         message_count: traceData.length
@@ -216,6 +223,7 @@
                 iframe.contentWindow.postMessage(message, '*');
 
                 console.log('Trace loaded:', selectedFile);
+                console.log('Messages:', traceData.length);
             } catch (error) {
                 console.error('Error loading trace:', error);
                 alert(`Error loading trace: ${error.message}`);
