@@ -17,23 +17,31 @@
             background: #0f172a;
             min-height: 100vh;
             padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .container {
             max-width: 1000px;
             margin: 0 auto;
+            width: 100%;
         }
 
         .conversation {
             padding: 0;
             margin-bottom: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
         .message {
-            display: flex;
+            display: flex !important;
+            width: 100% !important;
             margin-bottom: 20px;
             padding: 0;
             animation: fadeIn 0.3s ease-out;
+            clear: both;
         }
 
         @keyframes fadeIn {
@@ -48,12 +56,14 @@
         }
 
         .message.user {
-            justify-content: flex-start;
+            justify-content: flex-start !important;  /* User on LEFT */
+            text-align: left;
         }
 
         .message.assistant,
         .message.tool {
-            justify-content: flex-end;
+            justify-content: flex-end !important;  /* Assistant on RIGHT */
+            text-align: right;
         }
 
         .message-bubble {
@@ -61,22 +71,27 @@
             padding: 16px 18px;
             border-radius: 18px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            text-align: left;
+            display: inline-block;
         }
 
         .message.user .message-bubble {
             background: linear-gradient(135deg, #4a6fb5 0%, #2d5a9e 100%);
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 4px;  /* Tail on left for user */
+            margin-right: auto;
         }
 
         .message.assistant .message-bubble {
             background: linear-gradient(135deg, #475569 0%, #334155 100%);
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 4px;  /* Tail on right for assistant */
+            margin-left: auto;
         }
 
         .message.tool .message-bubble {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             border: 1px solid #334155;
             border-bottom-right-radius: 4px;
+            margin-left: auto;
         }
 
         .message.tool .message-bubble:hover {
@@ -779,6 +794,29 @@
 
         function formatContent(content) {
             if (!content) return '';
+
+            // Check if content is an array of content blocks (LangChain structure)
+            if (Array.isArray(content)) {
+                // Extract text from content blocks
+                let textContent = '';
+                content.forEach(block => {
+                    if (block.type === 'text' && block.text) {
+                        textContent += block.text;
+                    } else if (typeof block === 'string') {
+                        textContent += block;
+                    }
+                });
+
+                if (textContent) {
+                    // Parse the extracted text as markdown
+                    const html = parseMarkdown(textContent);
+                    return `<div class="markdown-content">${html}</div>`;
+                }
+
+                // If no text was extracted, fall back to JSON display
+                const formatted = syntaxHighlightJSON(content);
+                return `<div class="json-container"><pre>${formatted}</pre></div>`;
+            }
 
             // If content is an object, stringify it first
             if (typeof content === 'object') {
