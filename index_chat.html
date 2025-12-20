@@ -830,8 +830,9 @@
 
             // If content is an object, check for common fields like "answer", "output", "text"
             if (typeof content === 'object') {
-                // Try to extract text from common fields
-                const textField = content.answer || content.output || content.text || content.content;
+                // Try to extract text from common fields (check common variations)
+                const textField = content.answer || content.output || content.text || content.content ||
+                                 content.output_answer || content.message || content.response || content.result;
                 if (textField && typeof textField === 'string') {
                     console.log('[formatContent] Extracting text from object field:', textField.substring(0, 100));
                     const html = parseMarkdown(textField);
@@ -847,8 +848,9 @@
             if (isJSON(content)) {
                 try {
                     const parsed = JSON.parse(content);
-                    // Try to extract text from the parsed object
-                    const textField = parsed.answer || parsed.output || parsed.text || parsed.content;
+                    // Try to extract text from the parsed object (check common variations)
+                    const textField = parsed.answer || parsed.output || parsed.text || parsed.content ||
+                                     parsed.output_answer || parsed.message || parsed.response || parsed.result;
                     if (textField && typeof textField === 'string') {
                         console.log('[formatContent] Extracting text from JSON string field:', textField.substring(0, 100));
                         const html = parseMarkdown(textField);
