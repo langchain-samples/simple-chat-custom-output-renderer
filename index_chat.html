@@ -105,6 +105,10 @@
             opacity: 0.3;
         }
 
+        .conversation.initial-load {
+            opacity: 0;
+        }
+
         .message {
             display: flex;
             width: 100%;
@@ -903,14 +907,19 @@
                 const isCollapsed = element.classList.toggle('collapsed');
 
                 if (toggle) {
-                    toggle.textContent = isCollapsed ? '▼ Click to expand' : '▲ Click to collapse';
+                    toggle.textContent = isCollapsed ? '▼ Expand' : '▲ Collapse';
                     toggle.setAttribute('aria-expanded', !isCollapsed);
                 }
             }
 
+            // Expose functions to global scope for inline event handlers
+            window.toggleRaw = toggleRaw;
+            window.toggleTool = toggleTool;
+
             let renderTimeout = null;
             let isUpdating = false;
-            let isFirstRender = true;
+            let isFirstMessage = true;
+            let lastRenderData = null;
 
             function performRender(data) {
                 const conversationCard = document.createElement('div');
@@ -940,18 +949,22 @@
                 conversationCard.innerHTML = conversationHTML;
 
                 const existingCard = conversationsContainer.querySelector('.conversation');
+                const isFirstRender = !existingCard;
 
-                // Skip transition on first render to prevent initial flash
+                // First render - show immediately without transition
                 if (isFirstRender) {
+                    conversationCard.classList.add('initial-load');
                     conversationsContainer.replaceChildren(conversationCard);
-                    isFirstRender = false;
+                    // Force reflow then reveal
+                    void conversationCard.offsetWidth;
+                    conversationCard.classList.remove('initial-load');
                     isUpdating = false;
-                } else if (existingCard && !isUpdating) {
+                } else if (!isUpdating) {
                     isUpdating = true;
                     existingCard.classList.add('updating');
                     setTimeout(() => {
                         conversationsContainer.replaceChildren(conversationCard);
-                        void conversationCard.offsetWidth; // Trigger reflow
+                        void conversationCard.offsetWidth;
                         conversationCard.classList.remove('updating');
                         isUpdating = false;
                     }, 150);
@@ -959,6 +972,8 @@
                     conversationsContainer.replaceChildren(conversationCard);
                     isUpdating = false;
                 }
+
+                lastRenderData = data;
             }
 
             window.addEventListener('message', (event) => {
@@ -976,12 +991,18 @@
                 console.log('[Message Event] Extracted data:', data);
                 console.log('[Message Event] Data type:', typeof data, Array.isArray(data) ? '(array)' : '');
 
-                // Increased debounce delay to better handle rapid initial messages
-                if (renderTimeout) clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(() => {
+                // First message renders immediately, subsequent messages are debounced
+                if (isFirstMessage) {
+                    isFirstMessage = false;
+                    if (renderTimeout) clearTimeout(renderTimeout);
                     performRender(data);
-                    renderTimeout = null;
-                }, 150);
+                } else {
+                    if (renderTimeout) clearTimeout(renderTimeout);
+                    renderTimeout = setTimeout(() => {
+                        performRender(data);
+                        renderTimeout = null;
+                    }, 150);
+                }
             });
 
             // Cleanup on unload
