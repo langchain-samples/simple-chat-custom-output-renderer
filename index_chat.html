@@ -130,12 +130,14 @@
             }
         }
 
-        .message.user {
+        .message.user,
+        .message.human {
             justify-content: flex-start;
             text-align: left;
         }
 
         .message.assistant,
+        .message.ai,
         .message.tool {
             justify-content: flex-end;
             text-align: right;
@@ -150,14 +152,16 @@
             display: inline-block;
         }
 
-        .message.user .message-bubble {
+        .message.user .message-bubble,
+        .message.human .message-bubble {
             background: linear-gradient(135deg, var(--user-bg-start) 0%, var(--user-bg-end) 100%);
             border-bottom-left-radius: 4px;
             margin-right: auto;
             border: 1px solid var(--user-border);
         }
 
-        .message.assistant .message-bubble {
+        .message.assistant .message-bubble,
+        .message.ai .message-bubble {
             background: linear-gradient(135deg, var(--assistant-bg-start) 0%, var(--assistant-bg-end) 100%);
             border-bottom-right-radius: 4px;
             margin-left: auto;
@@ -906,6 +910,7 @@
 
             let renderTimeout = null;
             let isUpdating = false;
+            let isFirstRender = true;
 
             function performRender(data) {
                 const conversationCard = document.createElement('div');
@@ -935,7 +940,13 @@
                 conversationCard.innerHTML = conversationHTML;
 
                 const existingCard = conversationsContainer.querySelector('.conversation');
-                if (existingCard && !isUpdating) {
+
+                // Skip transition on first render to prevent initial flash
+                if (isFirstRender) {
+                    conversationsContainer.replaceChildren(conversationCard);
+                    isFirstRender = false;
+                    isUpdating = false;
+                } else if (existingCard && !isUpdating) {
                     isUpdating = true;
                     existingCard.classList.add('updating');
                     setTimeout(() => {
@@ -955,11 +966,12 @@
 
                 if (!data) return;
 
+                // Increased debounce delay to better handle rapid initial messages
                 if (renderTimeout) clearTimeout(renderTimeout);
                 renderTimeout = setTimeout(() => {
                     performRender(data);
                     renderTimeout = null;
-                }, 50);
+                }, 150);
             });
 
             // Cleanup on unload
