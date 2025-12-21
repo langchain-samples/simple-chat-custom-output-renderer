@@ -962,9 +962,19 @@
             }
 
             window.addEventListener('message', (event) => {
+                console.log('[Message Event] Received:', event);
+                console.log('[Message Event] event.data:', event.data);
+                console.log('[Message Event] event.origin:', event.origin);
+
                 const { data } = event.data;
 
-                if (!data) return;
+                if (!data) {
+                    console.warn('[Message Event] No data in event.data, ignoring');
+                    return;
+                }
+
+                console.log('[Message Event] Extracted data:', data);
+                console.log('[Message Event] Data type:', typeof data, Array.isArray(data) ? '(array)' : '');
 
                 // Increased debounce delay to better handle rapid initial messages
                 if (renderTimeout) clearTimeout(renderTimeout);
