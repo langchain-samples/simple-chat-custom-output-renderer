@@ -608,7 +608,7 @@
                 // Match strings (limit length to prevent catastrophic backtracking)
                 const stringMatches = [];
                 let stringIndex = 0;
-                code = code.replace(/(["'`])((?:\\.|[^\1\\]){0,1000}?)\1/g, (match) => {
+                code = code.replace(/(["'`])((?:\\.|[^"'`\\]){0,1000}?)\1/g, (match) => {
                     const placeholder = `__STRING_${stringIndex}__`;
                     stringMatches[stringIndex] = `<span class="string">${match}</span>`;
                     stringIndex++;
@@ -665,90 +665,72 @@
                 }
             }
 
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeMarked);
-        } else {
-            initializeMarked();
-        }
-
-        // Parse markdown with syntax highlighting
-        function parseMarkdown(text) {
-            if (typeof marked === 'undefined') {
-                console.warn('marked library not loaded!');
-                return text;
+            // Initialize when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeMarked);
+            } else {
+                initializeMarked();
             }
 
-            try {
-                // Use marked.parse() for version 11.x
-                if (typeof marked.parse === 'function') {
-                    const result = marked.parse(text, {
-                        breaks: true,
-                        gfm: true
-                    });
-                    return result;
-                } else if (typeof marked === 'function') {
-                    // Fallback for older versions
-                    const result = marked(text, {
-                        breaks: true,
-                        gfm: true
-                    });
-                    return result;
-                } else {
-                    console.error('Cannot find marked parsing function');
+            // Parse markdown with syntax highlighting
+            function parseMarkdown(text) {
+                if (typeof marked === 'undefined') {
+                    console.warn('marked library not loaded!');
                     return text;
                 }
-            } catch (e) {
-                console.error('Markdown parse error:', e, 'Input:', text.substring(0, 100));
-                return text;
-            }
-        }
 
-        function isJSON(str) {
-            if (typeof str !== 'string') return false;
-            try {
-                const result = JSON.parse(str);
-                return typeof result === 'object' && result !== null;
-            } catch (e) {
-                return false;
-            }
-        }
-
-        function syntaxHighlightJSON(json) {
-            // Pretty-print JSON with 2-space indentation
-            if (typeof json !== 'string') {
-                json = JSON.stringify(json, null, 2);
-            } else {
-                // If it's already a string, try to parse and re-stringify for formatting
                 try {
-                    const parsed = JSON.parse(json);
-                    json = JSON.stringify(parsed, null, 2);
+                    // Use marked.parse() for version 11.x
+                    if (typeof marked.parse === 'function') {
+                        return marked.parse(text, { breaks: true, gfm: true });
+                    } else if (typeof marked === 'function') {
+                        return marked(text, { breaks: true, gfm: true });
+                    } else {
+                        console.error('Cannot find marked parsing function');
+                        return text;
+                    }
                 } catch (e) {
-                    // If parsing fails, use as-is
-                    console.warn('Failed to parse JSON for formatting:', e);
+                    console.error('Markdown parse error:', e, 'Input:', text.substring(0, 100));
+                    return text;
                 }
             }
 
-            // Escape HTML
-            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-            // Apply syntax highlighting
-            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-                let cls = 'json-number';
-                if (/^"/.test(match)) {
-                    if (/:$/.test(match)) {
-                        cls = 'json-key';
-                    } else {
-                        cls = 'json-string';
-                    }
-                } else if (/true|false/.test(match)) {
-                    cls = 'json-boolean';
-                } else if (/null/.test(match)) {
-                    cls = 'json-null';
+            function isJSON(str) {
+                if (typeof str !== 'string') return false;
+                try {
+                    const result = JSON.parse(str);
+                    return typeof result === 'object' && result !== null;
+                } catch (e) {
+                    return false;
                 }
-                return '<span class="' + cls + '">' + match + '</span>';
-            });
-        }
+            }
+
+            function syntaxHighlightJSON(json) {
+                if (typeof json !== 'string') {
+                    json = JSON.stringify(json, null, 2);
+                } else {
+                    try {
+                        const parsed = JSON.parse(json);
+                        json = JSON.stringify(parsed, null, 2);
+                    } catch (e) {
+                        console.warn('Failed to parse JSON for formatting:', e);
+                    }
+                }
+
+                json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                    let cls = 'json-number';
+                    if (/^"/.test(match)) {
+                        cls = /:$/.test(match) ? 'json-key' : 'json-string';
+                    } else if (/true|false/.test(match)) {
+                        cls = 'json-boolean';
+                    } else if (/null/.test(match)) {
+                        cls = 'json-null';
+                    }
+                    return '<span class="' + cls + '">' + match + '</span>';
+                });
+            }
 
             // Helper to extract text from common field names
             function extractTextField(obj) {
@@ -762,70 +744,66 @@
             }
 
             function formatContent(content) {
-            if (!content) return '';
+                if (!content) return '';
 
-            // Check if content is an array of content blocks (LangChain structure)
-            if (Array.isArray(content)) {
-                // Extract text from content blocks - use array for performance
-                const textParts = [];
-                content.forEach(block => {
-                    if (block && block.type === 'text' && block.text) {
-                        textParts.push(block.text);
-                    } else if (typeof block === 'string') {
-                        textParts.push(block);
-                    } else if (block && block.type === 'tool_use' && DEBUG) {
-                        console.log('[formatContent] Skipping tool_use block:', block.name);
+                // Check if content is an array of content blocks (LangChain structure)
+                if (Array.isArray(content)) {
+                    const textParts = [];
+                    content.forEach(block => {
+                        if (block && block.type === 'text' && block.text) {
+                            textParts.push(block.text);
+                        } else if (typeof block === 'string') {
+                            textParts.push(block);
+                        } else if (block && block.type === 'tool_use' && DEBUG) {
+                            console.log('[formatContent] Skipping tool_use block:', block.name);
+                        }
+                    });
+
+                    const textContent = textParts.join('');
+                    if (textContent) {
+                        const html = parseMarkdown(textContent);
+                        return `<div class="markdown-content">${html}</div>`;
                     }
-                });
 
-                const textContent = textParts.join('');
-                if (textContent) {
-                    // Parse the extracted text as markdown
-                    const html = parseMarkdown(textContent);
-                    return `<div class="markdown-content">${html}</div>`;
+                    const formatted = syntaxHighlightJSON(content);
+                    return `<div class="json-container"><pre>${formatted}</pre></div>`;
                 }
 
-                // If no text was extracted, fall back to JSON display
-                const formatted = syntaxHighlightJSON(content);
-                return `<div class="json-container"><pre>${formatted}</pre></div>`;
-            }
-
-            // If content is an object, try to extract text from common fields
-            if (typeof content === 'object') {
-                const textField = extractTextField(content);
-                if (textField) {
-                    if (DEBUG) console.log('[formatContent] Extracting text from object:', textField.substring(0, 100));
-                    const html = parseMarkdown(textField);
-                    return `<div class="markdown-content">${html}</div>`;
-                }
-
-                // Otherwise display as formatted JSON
-                const formatted = syntaxHighlightJSON(content);
-                return `<div class="json-container"><pre>${formatted}</pre></div>`;
-            }
-
-            // Check if entire content is pure JSON string
-            if (isJSON(content)) {
-                try {
-                    const parsed = JSON.parse(content);
-                    const textField = extractTextField(parsed);
+                // If content is an object, try to extract text from common fields
+                if (typeof content === 'object') {
+                    const textField = extractTextField(content);
                     if (textField) {
-                        if (DEBUG) console.log('[formatContent] Extracting text from JSON string:', textField.substring(0, 100));
+                        if (DEBUG) console.log('[formatContent] Extracting text from object:', textField.substring(0, 100));
                         const html = parseMarkdown(textField);
                         return `<div class="markdown-content">${html}</div>`;
                     }
-                } catch (e) {
-                    if (DEBUG) console.warn('[formatContent] Failed to extract from JSON string:', e);
+
+                    const formatted = syntaxHighlightJSON(content);
+                    return `<div class="json-container"><pre>${formatted}</pre></div>`;
                 }
 
-                const formatted = syntaxHighlightJSON(content);
-                return `<div class="json-container"><pre>${formatted}</pre></div>`;
-            }
+                // Check if entire content is pure JSON string
+                if (isJSON(content)) {
+                    try {
+                        const parsed = JSON.parse(content);
+                        const textField = extractTextField(parsed);
+                        if (textField) {
+                            if (DEBUG) console.log('[formatContent] Extracting text from JSON string:', textField.substring(0, 100));
+                            const html = parseMarkdown(textField);
+                            return `<div class="markdown-content">${html}</div>`;
+                        }
+                    } catch (e) {
+                        if (DEBUG) console.warn('[formatContent] Failed to extract from JSON string:', e);
+                    }
 
-            // Default: parse as markdown
-            const html = parseMarkdown(content);
-            return `<div class="markdown-content">${html}</div>`;
-        }
+                    const formatted = syntaxHighlightJSON(content);
+                    return `<div class="json-container"><pre>${formatted}</pre></div>`;
+                }
+
+                // Default: parse as markdown
+                const html = parseMarkdown(content);
+                return `<div class="markdown-content">${html}</div>`;
+            }
 
             function renderMessage(message, index) {
                 if (DEBUG) console.log('[renderMessage]', message);
@@ -854,41 +832,39 @@
                         renderedHTML += formatContent(message.content);
                     }
 
-                // Tool calls (for assistant messages) - use array for performance
-                if (message.tool_calls && message.tool_calls.length > 0) {
-                    const toolCallParts = ['<div class="tool-calls">'];
-                    for (let toolCall of message.tool_calls) {
-                        // Handle both nested function structure and flat structure
-                        const func = toolCall.function || toolCall;
-                        const toolName = escapeHtml(func.name || toolCall.name || 'Unknown Tool');
-                        const toolArgs = func.arguments || toolCall.args;
-                        const toolId = escapeHtml(toolCall.id || '');
+                    // Tool calls (for assistant messages)
+                    if (message.tool_calls && message.tool_calls.length > 0) {
+                        const toolCallParts = ['<div class="tool-calls">'];
+                        for (let toolCall of message.tool_calls) {
+                            const func = toolCall.function || toolCall;
+                            const toolName = escapeHtml(func.name || toolCall.name || 'Unknown Tool');
+                            const toolArgs = func.arguments || toolCall.args;
+                            const toolId = escapeHtml(toolCall.id || '');
 
-                        let argsHTML = '';
-                        if (toolArgs !== undefined && toolArgs !== null) {
-                            // Try to parse and format arguments as JSON
-                            if (typeof toolArgs === 'object') {
-                                argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
-                            } else if (isJSON(toolArgs)) {
-                                argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
-                            } else {
-                                argsHTML = `<div class="tool-arguments">${escapeHtml(String(toolArgs))}</div>`;
+                            let argsHTML = '';
+                            if (toolArgs !== undefined && toolArgs !== null) {
+                                if (typeof toolArgs === 'object') {
+                                    argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
+                                } else if (isJSON(toolArgs)) {
+                                    argsHTML = `<div class="tool-arguments"><pre>${syntaxHighlightJSON(toolArgs)}</pre></div>`;
+                                } else {
+                                    argsHTML = `<div class="tool-arguments">${escapeHtml(String(toolArgs))}</div>`;
+                                }
                             }
-                        }
 
-                        toolCallParts.push(`
-                            <div class="tool-call">
-                                <div class="tool-call-header">
-                                    <span class="tool-name">${toolName}</span>
-                                    <span class="tool-id">${toolId}</span>
+                            toolCallParts.push(`
+                                <div class="tool-call">
+                                    <div class="tool-call-header">
+                                        <span class="tool-name">${toolName}</span>
+                                        <span class="tool-id">${toolId}</span>
+                                    </div>
+                                    ${argsHTML}
                                 </div>
-                                ${argsHTML}
-                            </div>
-                        `);
+                            `);
+                        }
+                        toolCallParts.push('</div>');
+                        renderedHTML += toolCallParts.join('');
                     }
-                    toolCallParts.push('</div>');
-                    renderedHTML += toolCallParts.join('');
-                }
                 }
 
                 const rawJSON = syntaxHighlightJSON(message);
