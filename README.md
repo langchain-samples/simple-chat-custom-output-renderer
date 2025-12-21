@@ -1,253 +1,187 @@
-# LangSmith Custom Output Renderer for Chat LangChain
+# LangSmith Custom Output Renderer
 
-A local server and dark-themed frontend specifically designed for visualizing Chat LangChain conversation traces from LangSmith.
+A single-file custom output renderer for LangSmith that displays conversation traces with a clean, modern interface.
 
 ## Overview
 
-This project provides a complete setup for creating custom visualizations of LangSmith run outputs and dataset reference outputs. It includes specialized renderers optimized for Chat LangChain conversation traces, displaying:
+This is a production-ready custom output renderer built as a single HTML file containing all CSS and JavaScript. It provides:
 
-- Multi-turn conversations with user, assistant, and tool messages
-- Tool calls with function names and arguments
-- Tool responses from search operations (SearchDocsByLangChain, search_support_articles, etc.)
-- Formatted search results with titles, links, and content
-- Complete conversation flow visualization
-
-## Features
-
-- **Dark Theme Interface**: Easy-to-read dark theme optimized for code and JSON viewing
-- **Real-time Message Display**: Instantly visualize postMessage events from LangSmith
-- **Syntax Highlighting**: Automatic JSON syntax highlighting with color-coded keys, values, and data types
-- **Local Testing**: Test your renderer locally before deploying to LangSmith
-- **CORS-enabled Server**: Simple Python server with proper headers for embedding in LangSmith
+- **Multi-turn conversations** - User, assistant, and tool messages with distinct styling
+- **Markdown rendering** - Full GitHub-flavored markdown support with syntax highlighting
+- **JSON syntax highlighting** - Color-coded display of structured data
+- **Tool call visualization** - Function names, arguments, and results
+- **Raw JSON toggle** - View the original message structure
+- **Optimized loading** - Handles LangSmith's rapid initial message burst without flashing
 
 ## Quick Start
 
-### 1. Start the Local Server
+### 1. Host the Renderer
 
+Upload `index_chat.html` to any static file host:
+
+**Option A: GitHub Pages**
 ```bash
-cd chat_langchain_custom_output_renderer
-python3 server.py
+# Your file is already hosted at:
+# https://stephen-chu.github.io/custom-output-renderer-chat-langchain/index_chat.html
 ```
 
-The server will start on `http://localhost:8000`
+**Option B: Other Static Hosts**
+- Netlify
+- Vercel
+- AWS S3 + CloudFront
+- Any web server
 
-### 2. Test with Real Traces
+### 2. Configure in LangSmith
 
-Open `http://localhost:8000/demo.html` in your browser to see actual traces from your Chat-LangChain project visualized in the custom renderer.
+1. Go to your LangSmith project settings
+2. Navigate to **Custom Output Rendering**
+3. Paste your hosted URL (e.g., `https://your-username.github.io/repo-name/index_chat.html`)
+4. Save
 
-The demo includes 5 actual conversation traces fetched from your LangSmith project. You can:
-- Select different traces from the dropdown
-- See the conversation flow with user questions, assistant responses, and tool calls
-- View formatted search results from documentation and support articles
+That's it! Your traces will now render with the custom interface.
 
-### 3. Test with Simulated Data
+## Features
 
-Open `http://localhost:8000/test.html` to test with simulated postMessage events (for generic testing).
+### Message Display
+- **User Messages** - Blue gradient bubbles, left-aligned
+- **Assistant Messages** - Green gradient bubbles, right-aligned, markdown rendered
+- **Tool Messages** - Yellow gradient bubbles, right-aligned, collapsible
 
-### 4. Configure in LangSmith
+### Interactive Elements
+- **Raw Toggle** - View the original JSON structure of any message
+- **Expand/Collapse** - Tool messages start collapsed for cleaner display
+- **Syntax Highlighting** - Automatic highlighting for code blocks and JSON
 
-**For Chat LangChain Project:**
-1. Copy the URL: `http://localhost:8000/index_chat.html`
-2. Go to your Chat-LangChain project settings in LangSmith
-3. Navigate to **Custom Output Rendering** section
-4. Paste the URL and save
+### Performance Optimizations
+- **Debounced rendering** - 500ms during initial load, 150ms after
+- **Animation suppression** - No animations during the first 3 seconds
+- **Smart updates** - Only re-renders when necessary
 
-**For Generic Projects:**
-1. Use `http://localhost:8000/index.html` for general-purpose trace rendering
+## Configuration Locations
 
-## Files
+Custom output rendering can be configured at three levels:
 
-- **`index.html`** - Generic custom output renderer with dark theme
-- **`index_chat.html`** - Chat LangChain-specific renderer optimized for conversation traces
-- **`demo.html`** - Demo page that loads actual traces from your LangSmith project
-- **`test.html`** - Local testing page to simulate postMessage events
-- **`server.py`** - Simple Python HTTP server with CORS support
-- **`traces/`** - Directory containing fetched traces from your Chat-LangChain project
-- **`fetch_traces.py`** - (Optional) Python script to fetch traces if needed
-- **`README.md`** - This file
+1. **Tracing Projects** - Project settings → Custom Output Rendering
+2. **Datasets** - Dataset menu (⋮) → Custom Output Rendering
+3. **Annotation Queues** - Queue settings → Custom Output Rendering
 
-## Chat LangChain Features
-
-The `index_chat.html` renderer is specifically designed for Chat LangChain traces and includes:
-
-### Conversation Display
-- **User Messages**: Blue-themed cards showing user questions
-- **Assistant Messages**: Green-themed cards showing assistant responses
-- **Tool Messages**: Purple-themed cards showing tool execution results
-
-### Tool Call Visualization
-- Function names displayed with syntax highlighting
-- Arguments shown in formatted JSON
-- Tool call IDs for tracking
-
-### Search Result Parsing
-- Automatic parsing of search results from `SearchDocsByLangChain`
-- Formatted display of:
-  - Document titles
-  - Links to source documents
-  - Content excerpts
-- Scrollable content areas for long results
-
-### Demo with Real Traces
-
-The `demo.html` page allows you to:
-1. Select from actual traces fetched from your LangSmith project
-2. Load and visualize them in the custom renderer
-3. See exactly how your traces will appear in LangSmith
+Precedence: Annotation Queue > Dataset > Project
 
 ## How It Works
 
-### Message Structure
+### Data Flow
 
-LangSmith sends messages to your custom renderer using the postMessage API with this structure:
+```
+LangSmith → postMessage API → index_chat.html → Rendered UI
+```
+
+LangSmith sends messages via the browser's `postMessage` API:
 
 ```javascript
 {
-  type: "output" | "reference",
   data: {
-    // The actual output or reference data
-  },
-  metadata: {
-    inputs: {
-      // Input data that generated this output
-    }
+    // Array of messages or single message object
   }
 }
 ```
 
-### Message Delivery
+On initial load, LangSmith sends **one postMessage per message** in the trace history, which is why the renderer uses debouncing and animation suppression.
 
-LangSmith uses exponential backoff retry (up to 6 attempts) to ensure message delivery:
-- Attempt 1: 100ms delay
-- Attempt 2: 200ms delay
-- Attempt 3: 400ms delay
-- Attempt 4: 800ms delay
-- Attempt 5: 1600ms delay
-- Attempt 6: 3200ms delay
+### Message Structure
 
-## Customization
-
-### Modifying the Renderer
-
-Edit `index.html` to customize how your data is displayed:
-
-1. **Styling**: Modify the `<style>` section to change colors, fonts, and layout
-2. **Data Parsing**: Update the `renderValue()` function to handle specific data types
-3. **Message Handling**: Enhance the `window.addEventListener('message')` handler for custom logic
-
-### Example: Adding Custom Data Type Handling
-
+Each message typically contains:
 ```javascript
-function renderValue(value) {
-    // Custom handling for image URLs
-    if (typeof value === 'string' && value.match(/\.(jpg|jpeg|png|gif)$/i)) {
-        return `<img src="${value}" style="max-width: 100%; border-radius: 8px;">`;
-    }
-
-    // Custom handling for markdown
-    if (typeof value === 'object' && value.format === 'markdown') {
-        return `<div class="markdown">${marked(value.content)}</div>`;
-    }
-
-    // Default handling
-    if (typeof value === 'object') {
-        return `<div class="code-block">${syntaxHighlight(value)}</div>`;
-    }
-
-    return `<div class="data-display">${String(value)}</div>`;
+{
+  role: "human" | "ai" | "tool",
+  content: "string or array of content blocks",
+  name: "optional tool/function name",
+  tool_calls: [...], // For assistant messages
+  // ... other fields
 }
 ```
 
-## Configuration Locations in LangSmith
+## Customization
 
-Custom output rendering can be configured at three levels (with precedence: annotation queue > dataset > tracing project):
+The renderer is a single HTML file, making it easy to customize:
 
-1. **Tracing Projects**: Project settings → Custom Output Rendering section
-2. **Datasets**: Dataset menu (⋮) → Custom Output Rendering option
-3. **Annotation Queues**: Queue settings → Custom Output Rendering section
+### Styling
 
-## Where Custom Rendering Appears
+Edit the CSS variables in the `<style>` section (lines ~9-72):
 
-- Experiment comparison views
-- Run detail panes for dataset-associated runs
-- Annotation queues
-
-## Common Use Cases
-
-### 1. Domain-Specific Formatting
-
-Display specialized data types in their native format:
-- Medical records with structured fields
-- Legal documents with citations
-- Financial data with tables and charts
-
-### 2. Custom Visualizations
-
-Create rich visualizations from structured data:
-- Charts and graphs from metrics
-- Timeline views for conversation history
-- Network diagrams for agent interactions
-
-### 3. Multi-Modal Outputs
-
-Handle different types of content:
-- Images and videos
-- Code snippets with syntax highlighting
-- Interactive components
-
-## Testing Examples
-
-The `test.html` page includes several preset messages:
-
-- **Simple Text**: Basic string output with metadata
-- **Structured Data**: Complex nested JSON objects
-- **Conversation**: Multi-turn chat messages
-- **Error Output**: Error handling display
-
-## Troubleshooting
-
-### Renderer not loading in LangSmith
-
-- Ensure the server is running on `http://localhost:8000`
-- Check that the URL in LangSmith settings is correct
-- Verify CORS headers are enabled (they are by default in `server.py`)
-
-### Messages not appearing
-
-- Open the browser console to check for JavaScript errors
-- Verify the message structure matches the expected format
-- Check that the postMessage is being sent to the correct window
-
-### Styling issues
-
-- Check browser compatibility (modern browsers recommended)
-- Clear browser cache and reload
-- Inspect CSS with browser DevTools
-
-## Development Tips
-
-1. **Test locally first**: Always test with `test.html` before deploying
-2. **Console logging**: The renderer logs received messages to the console
-3. **Incremental changes**: Make small changes and test frequently
-4. **Browser DevTools**: Use the Elements and Console tabs for debugging
-
-## Port Configuration
-
-By default, the server runs on port 8000. To change this:
-
-```python
-# Edit server.py
-PORT = 3000  # Change to your desired port
+```css
+:root {
+    --user-bg-start: #e0f2fe;  /* User message background */
+    --assistant-bg-start: #f0fdf4;  /* Assistant message background */
+    --tool-bg-start: #fef3c7;  /* Tool message background */
+    /* ... more colors */
+}
 ```
 
-Then update the URL in LangSmith accordingly.
+### Rendering Logic
 
-## Security Notes
+Edit the JavaScript functions (lines ~568-1037):
 
-- This server is intended for local development only
-- Do not expose this server to the public internet
-- CORS is enabled (`Access-Control-Allow-Origin: *`) for development convenience
-- For production use, consider restricting CORS to specific origins
+- `formatContent()` - How message content is rendered
+- `renderMessage()` - Overall message structure
+- `parseMarkdown()` - Markdown parsing (uses marked.js)
+- `syntaxHighlightJSON()` - JSON syntax highlighting
+
+### Performance Tuning
+
+Adjust timing constants (lines ~928-930):
+
+```javascript
+const INITIAL_LOAD_DURATION = 3000;  // How long to suppress animations
+const INITIAL_DEBOUNCE = 500;  // Debounce during initial load
+const NORMAL_DEBOUNCE = 150;  // Debounce after initial load
+```
+
+## Technical Details
+
+### Dependencies
+
+- **marked.js** (v11.1.1) - Loaded from CDN for markdown parsing
+- No other dependencies - everything else is vanilla JavaScript
+
+### Browser Compatibility
+
+- Modern browsers (Chrome, Firefox, Safari, Edge)
+- Uses CSS variables and ES6+ features
+- No polyfills included
+
+### File Size
+
+- ~1,000 lines total
+- ~40KB uncompressed
+- ~10KB gzipped
+
+## Common Issues
+
+### Messages not rendering
+- Check browser console for JavaScript errors
+- Verify the URL is accessible from LangSmith (no firewall/VPN blocking)
+- Ensure CORS headers allow iframe embedding
+
+### Flashing on load
+- This should be fixed with the current debouncing implementation
+- If still present, increase `INITIAL_DEBOUNCE` value
+
+### Toggle buttons not working
+- Make sure you're using the latest version
+- Functions must be on `window` object for inline event handlers
+
+## Architecture
+
+**Single-file approach:**
+- ✅ Simple deployment (just upload one file)
+- ✅ Easy to customize (all code in one place)
+- ✅ No build process required
+- ✅ Good for prototypes and small projects
+
+**Compared to React/Next.js:**
+- More lines in one file, but less total code
+- Direct DOM manipulation vs declarative components
+- Faster initial setup, slower to add complex features
 
 ## Learn More
 
@@ -255,6 +189,10 @@ Then update the URL in LangSmith accordingly.
 - [Custom Output Rendering Guide](https://docs.langchain.com/langsmith/custom-output-rendering)
 - [postMessage API Documentation](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
 
+## Related Projects
+
+- [langchain-samples/custom-output-rendering](https://github.com/langchain-samples/custom-output-rendering) - React/Next.js approach with multiple renderers
+
 ## License
 
-This is a demonstration project for LangSmith custom output rendering.
+MIT
