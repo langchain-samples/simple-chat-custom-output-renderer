@@ -109,6 +109,10 @@
             opacity: 0;
         }
 
+        .conversation.suppress-animations .message {
+            animation: none !important;
+        }
+
         .message {
             display: flex;
             width: 100%;
@@ -918,8 +922,18 @@
 
             let renderTimeout = null;
             let isUpdating = false;
-            let isFirstMessage = true;
             let lastRenderData = null;
+
+            // Track initial load period to suppress animations and use longer debounce
+            const INITIAL_LOAD_DURATION = 3000; // 3 seconds
+            const INITIAL_DEBOUNCE = 500; // 500ms during initial load
+            const NORMAL_DEBOUNCE = 150; // 150ms after initial load
+            const initialLoadStart = Date.now();
+            let initialLoadTimeout = null;
+
+            function isInInitialLoadPeriod() {
+                return Date.now() - initialLoadStart < INITIAL_LOAD_DURATION;
+            }
 
             function performRender(data) {
                 const conversationCard = document.createElement('div');
@@ -947,6 +961,11 @@
                 }
 
                 conversationCard.innerHTML = conversationHTML;
+
+                // Suppress animations during initial load period
+                if (isInInitialLoadPeriod()) {
+                    conversationCard.classList.add('suppress-animations');
+                }
 
                 const existingCard = conversationsContainer.querySelector('.conversation');
                 const isFirstRender = !existingCard;
@@ -991,18 +1010,14 @@
                 console.log('[Message Event] Extracted data:', data);
                 console.log('[Message Event] Data type:', typeof data, Array.isArray(data) ? '(array)' : '');
 
-                // First message renders immediately, subsequent messages are debounced
-                if (isFirstMessage) {
-                    isFirstMessage = false;
-                    if (renderTimeout) clearTimeout(renderTimeout);
+                // Use longer debounce during initial load period
+                const debounceDelay = isInInitialLoadPeriod() ? INITIAL_DEBOUNCE : NORMAL_DEBOUNCE;
+
+                if (renderTimeout) clearTimeout(renderTimeout);
+                renderTimeout = setTimeout(() => {
                     performRender(data);
-                } else {
-                    if (renderTimeout) clearTimeout(renderTimeout);
-                    renderTimeout = setTimeout(() => {
-                        performRender(data);
-                        renderTimeout = null;
-                    }, 150);
-                }
+                    renderTimeout = null;
+                }, debounceDelay);
             });
 
             // Cleanup on unload
