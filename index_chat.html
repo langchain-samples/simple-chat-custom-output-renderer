@@ -50,6 +50,11 @@
             /* Code colors */
             --code-inline-bg: rgba(0, 0, 0, 0.05);
             --code-inline-color: #991b1b;
+            --syntax-keyword: #d73a49;
+            --syntax-string: #22863a;
+            --syntax-comment: #6a737d;
+            --syntax-function: #6f42c1;
+            --syntax-number: #005cc5;
             --json-key: #0369a1;
             --json-string: #15803d;
             --json-number: #0369a1;
@@ -227,14 +232,17 @@
             display: none;
         }
 
-        .tool-content pre {
+        /* Common pre styles */
+        .tool-content pre,
+        .raw-view pre,
+        .json-container pre,
+        .tool-result .json-container pre {
             margin: 0;
             padding: 0;
             background: transparent;
             border: none;
             white-space: pre-wrap;
             word-wrap: break-word;
-            color: var(--text-primary);
         }
 
         .message-role .raw-toggle {
@@ -280,21 +288,7 @@
             padding: 12px;
         }
 
-        .raw-view pre {
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .raw-view.hidden {
-            display: none;
-        }
-
-        .rendered-view.hidden {
+        .hidden {
             display: none;
         }
 
@@ -414,27 +408,12 @@
             font-family: var(--font-mono);
         }
 
-        /* GitHub-style syntax highlighting */
-        .markdown-content pre code .keyword {
-            color: #d73a49;
-        }
-
-        .markdown-content pre code .string {
-            color: #22863a;
-        }
-
-        .markdown-content pre code .comment {
-            color: #6a737d;
-            font-style: italic;
-        }
-
-        .markdown-content pre code .function {
-            color: #6f42c1;
-        }
-
-        .markdown-content pre code .number {
-            color: #005cc5;
-        }
+        /* Syntax highlighting */
+        .markdown-content pre code .keyword { color: var(--syntax-keyword); }
+        .markdown-content pre code .string { color: var(--syntax-string); }
+        .markdown-content pre code .comment { color: var(--syntax-comment); font-style: italic; }
+        .markdown-content pre code .function { color: var(--syntax-function); }
+        .markdown-content pre code .number { color: var(--syntax-number); }
 
         .markdown-content a {
             color: #2563eb;
@@ -481,16 +460,6 @@
             line-height: 1.5;
             border: 1px solid var(--border-medium);
             color: var(--text-primary);
-        }
-
-        .json-container pre {
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            border: none;
-            overflow-x: visible;
-            white-space: pre-wrap;
-            word-wrap: break-word;
         }
 
         .json-key {
@@ -558,31 +527,6 @@
             color: var(--text-primary);
         }
 
-        .tool-arguments pre {
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            border: none;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .tool-arguments .json-key {
-            color: var(--json-key);
-        }
-
-        .tool-arguments .json-string {
-            color: var(--json-string);
-        }
-
-        .tool-arguments .json-number {
-            color: var(--json-number);
-        }
-
-        .tool-arguments .json-boolean {
-            color: var(--json-boolean);
-        }
-
         .tool-result {
             max-height: var(--max-content-height);
             overflow-y: auto;
@@ -602,51 +546,6 @@
             color: var(--text-secondary);
         }
 
-        .tool-result .json-container pre {
-            margin: 0;
-            padding: 0;
-            background: transparent;
-            border: none;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        .search-result {
-            background: var(--bg-white);
-            border: 1px solid var(--border-medium);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-
-        .search-result-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #2563eb;
-            margin-bottom: 6px;
-        }
-
-        .search-result-link {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-decoration: none;
-            display: block;
-            margin-bottom: 8px;
-            word-break: break-all;
-        }
-
-        .search-result-link:hover {
-            color: #2563eb;
-        }
-
-        .search-result-content {
-            font-size: 13px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
     </style>
 </head>
 <body>
@@ -659,9 +558,30 @@
         (function() {
             'use strict';
 
-            const DEBUG = false; // Set to true for debug logging
+            const DEBUG = false;
             const conversationsContainer = document.getElementById('conversations');
-            let messageCounter = 0; // Prevents ID collisions
+            let messageCounter = 0;
+
+            // Constants
+            const ROLE_DISPLAY_NAMES = {
+                'user': 'Human',
+                'human': 'Human',
+                'assistant': 'AI Assistant',
+                'ai': 'AI Assistant',
+                'tool': 'Tool',
+                'unknown': 'Unknown'
+            };
+
+            const KEYWORDS_BY_LANG = {
+                javascript: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|new|this)\b/g,
+                python: /\b(def|class|import|from|return|if|else|elif|for|while|try|except|with|as|async|await|lambda|in|and|or|not|is|True|False|None)\b/g,
+                typescript: /\b(const|let|var|function|return|if|else|for|while|class|interface|type|import|export|from|async|await|try|catch|new|this)\b/g,
+                js: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|new|this)\b/g,
+                ts: /\b(const|let|var|function|return|if|else|for|while|class|interface|type|import|export|from|async|await|try|catch|new|this)\b/g,
+                py: /\b(def|class|import|from|return|if|else|elif|for|while|try|except|with|as|async|await|lambda|in|and|or|not|is|True|False|None)\b/g
+            };
+
+            const CONTENT_FIELDS = ['answer', 'output', 'text', 'content', 'output_answer', 'message', 'response', 'result'];
 
             // Security: HTML escape function to prevent XSS
             function escapeHtml(text) {
@@ -676,68 +596,48 @@
                 try {
                     return JSON.stringify(obj, null, indent);
                 } catch (e) {
-                    if (DEBUG) console.warn('[safeStringify] Circular reference or non-serializable:', e);
+                    if (DEBUG) console.warn('[safeStringify] Circular reference:', e);
                     return '[Unable to serialize: circular reference or non-serializable object]';
                 }
             }
 
-        // Simple syntax highlighting function
-        function highlightCode(code, lang) {
-            // Escape HTML first
-            code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            // Simple syntax highlighting function
+            function highlightCode(code, lang) {
+                code = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-            // Basic keyword highlighting for common languages
-            const keywords = {
-                javascript: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|new|this)\b/g,
-                python: /\b(def|class|import|from|return|if|else|elif|for|while|try|except|with|as|async|await|lambda|in|and|or|not|is|True|False|None)\b/g,
-                typescript: /\b(const|let|var|function|return|if|else|for|while|class|interface|type|import|export|from|async|await|try|catch|new|this)\b/g,
-                js: /\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|try|catch|new|this)\b/g,
-                ts: /\b(const|let|var|function|return|if|else|for|while|class|interface|type|import|export|from|async|await|try|catch|new|this)\b/g,
-                py: /\b(def|class|import|from|return|if|else|elif|for|while|try|except|with|as|async|await|lambda|in|and|or|not|is|True|False|None)\b/g
-            };
+                // Match strings (limit length to prevent catastrophic backtracking)
+                const stringMatches = [];
+                let stringIndex = 0;
+                code = code.replace(/(["'`])((?:\\.|[^\1\\]){0,1000}?)\1/g, (match) => {
+                    const placeholder = `__STRING_${stringIndex}__`;
+                    stringMatches[stringIndex] = `<span class="string">${match}</span>`;
+                    stringIndex++;
+                    return placeholder;
+                });
 
-            // Match strings (safer regex with length limit to prevent catastrophic backtracking)
-            const stringMatches = [];
-            let stringIndex = 0;
-            // Simplified string matching - handles common cases without complex lookahead
-            code = code.replace(/(["'`])((?:\\.|[^\1\\]){0,1000}?)\1/g, (match, quote, content) => {
-                const placeholder = `__STRING_${stringIndex}__`;
-                stringMatches[stringIndex] = `<span class="string">${match}</span>`;
-                stringIndex++;
-                return placeholder;
-            });
+                // Match comments
+                const commentMatches = [];
+                let commentIndex = 0;
+                code = code.replace(/(#.*$|\/\/.*$|\/\*[\s\S]*?\*\/)/gm, (match) => {
+                    const placeholder = `__COMMENT_${commentIndex}__`;
+                    commentMatches[commentIndex] = `<span class="comment">${match}</span>`;
+                    commentIndex++;
+                    return placeholder;
+                });
 
-            // Match comments
-            const commentMatches = [];
-            let commentIndex = 0;
-            code = code.replace(/(#.*$|\/\/.*$|\/\*[\s\S]*?\*\/)/gm, (match) => {
-                const placeholder = `__COMMENT_${commentIndex}__`;
-                commentMatches[commentIndex] = `<span class="comment">${match}</span>`;
-                commentIndex++;
-                return placeholder;
-            });
-
-            // Highlight keywords based on language
-            const keywordPattern = keywords[lang] || keywords.javascript;
-            if (keywordPattern) {
+                // Highlight keywords
+                const keywordPattern = KEYWORDS_BY_LANG[lang] || KEYWORDS_BY_LANG.javascript;
                 code = code.replace(keywordPattern, '<span class="keyword">$1</span>');
+
+                // Highlight numbers
+                code = code.replace(/\b\d+(\.\d+)?\b/g, '<span class="number">$&</span>');
+
+                // Restore strings and comments
+                stringMatches.forEach((match, i) => code = code.replace(`__STRING_${i}__`, match));
+                commentMatches.forEach((match, i) => code = code.replace(`__COMMENT_${i}__`, match));
+
+                return code;
             }
-
-            // Highlight numbers
-            code = code.replace(/\b\d+(\.\d+)?\b/g, '<span class="number">$&</span>');
-
-            // Restore strings
-            for (let i = 0; i < stringMatches.length; i++) {
-                code = code.replace(`__STRING_${i}__`, stringMatches[i]);
-            }
-
-            // Restore comments
-            for (let i = 0; i < commentMatches.length; i++) {
-                code = code.replace(`__COMMENT_${i}__`, commentMatches[i]);
-            }
-
-            return code;
-        }
 
             // Wait for marked to load, then initialize
             function initializeMarked() {
@@ -852,17 +752,16 @@
 
             // Helper to extract text from common field names
             function extractTextField(obj) {
-                const fields = ['answer', 'output', 'text', 'content', 'output_answer', 'message', 'response', 'result'];
-                for (const field of fields) {
+                for (const field of CONTENT_FIELDS) {
                     const value = obj[field];
-                    if (typeof value === 'string' && value.trim().length > 0) {
+                    if (typeof value === 'string' && value.trim()) {
                         return value;
                     }
                 }
                 return null;
             }
 
-        function formatContent(content) {
+            function formatContent(content) {
             if (!content) return '';
 
             // Check if content is an array of content blocks (LangChain structure)
@@ -923,88 +822,37 @@
                 return `<div class="json-container"><pre>${formatted}</pre></div>`;
             }
 
-            // Always try to parse as markdown (handles plain text, links, code blocks)
+            // Default: parse as markdown
             const html = parseMarkdown(content);
-            // ALWAYS wrap in markdown-content div, even if no transformation
             return `<div class="markdown-content">${html}</div>`;
         }
 
-        function renderToolResult(content, toolName) {
-            // If content is an object, stringify it first
-            if (typeof content === 'object') {
-                const formatted = syntaxHighlightJSON(content);
-                return `<div class="json-container"><pre>${formatted}</pre></div>`;
-            }
+            function renderMessage(message, index) {
+                if (DEBUG) console.log('[renderMessage]', message);
 
-            // Try to format JSON content
-            if (isJSON(content)) {
-                const formatted = syntaxHighlightJSON(content);
-                return `<div class="json-container"><pre>${formatted}</pre></div>`;
-            }
+                const role = message.role || message.type || 'unknown';
+                const messageId = `msg-${messageCounter++}`;
+                const rawId = `raw-${messageId}`;
+                const renderedId = `rendered-${messageId}`;
+                const displayRole = ROLE_DISPLAY_NAMES[role] || escapeHtml(role);
+                const escapedName = message.name ? ` (${escapeHtml(message.name)})` : '';
 
-            // Always try markdown rendering (handles plain text, links, code blocks)
-            const html = parseMarkdown(content);
-            // ALWAYS wrap in markdown-content div
-            return `<div class="markdown-content">${html}</div>`;
-        }
+                const roleHeader = `
+                    <div class="message-role">
+                        <span>${displayRole}${escapedName}</span>
+                        ${role !== 'tool' ? `<button class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')" aria-label="Toggle raw JSON view" aria-expanded="false" aria-controls="${rawId}">{ } Raw</button>` : ''}
+                        ${role === 'tool' ? `<button class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')" aria-label="Expand tool output" aria-expanded="false" aria-controls="${messageId}">▼ Expand</button>` : ''}
+                    </div>
+                `;
 
-        function renderMessage(message, index) {
-            if (DEBUG) console.log('[renderMessage] Input:', message);
+                let renderedHTML = '';
 
-            // Detect role from message
-            let role = message.role || message.type || 'unknown';
-
-            if (DEBUG) console.log('[renderMessage] Detected role:', role);
-
-            const messageClass = `message ${role}`;
-            const messageId = `msg-${messageCounter++}`;
-            const rawId = `raw-${messageId}`;
-            const renderedId = `rendered-${messageId}`;
-
-            if (DEBUG) console.log(`Rendering ${role} message #${index}, rawId: ${rawId}`);
-
-            let bubbleHTML = '';
-
-            // Map roles to display names
-            const roleDisplayNames = {
-                'user': 'Human',
-                'human': 'Human',
-                'assistant': 'AI Assistant',
-                'ai': 'AI Assistant',
-                'tool': 'Tool',
-                'unknown': 'Unknown'
-            };
-            const displayRole = roleDisplayNames[role] || escapeHtml(role);
-            const escapedName = message.name ? ` (${escapeHtml(message.name)})` : '';
-
-            // Add role header with appropriate toggles
-            const roleHeader = `
-                <div class="message-role">
-                    <span>${displayRole}${escapedName}</span>
-                    ${role !== 'tool' ? `<button class="raw-toggle" onclick="event.stopPropagation(); toggleRaw('${rawId}', '${renderedId}')" aria-label="Toggle raw JSON view" aria-expanded="false" aria-controls="${rawId}">{ } Raw</button>` : ''}
-                    ${role === 'tool' ? `<button class="tool-toggle" onclick="event.stopPropagation(); toggleTool('${messageId}')" aria-label="Expand tool output" aria-expanded="false" aria-controls="${messageId}">▼ Expand</button>` : ''}
-                </div>
-            `;
-
-            // Build rendered view
-            let renderedHTML = '';
-
-            // Extract content from message
-            const content = message.content;
-
-            if (DEBUG) console.log('[renderMessage] Content:', content);
-
-            // Skip rendered view for tool messages (they only show raw JSON)
-            if (role !== 'tool') {
-                // Content with formatting
-                if (content) {
-                    const formattedContent = formatContent(content);
-                    if (formattedContent.includes('<div')) {
-                        renderedHTML += formattedContent;
-                    } else {
-                        renderedHTML += `<div class="message-content">${formattedContent}</div>`;
+                // Skip rendered view for tool messages (they only show raw JSON)
+                if (role !== 'tool') {
+                    // Format content
+                    if (message.content) {
+                        renderedHTML += formatContent(message.content);
                     }
-                }
 
                 // Tool calls (for assistant messages) - use array for performance
                 if (message.tool_calls && message.tool_calls.length > 0) {
@@ -1041,208 +889,102 @@
                     toolCallParts.push('</div>');
                     renderedHTML += toolCallParts.join('');
                 }
+                }
+
+                const rawJSON = syntaxHighlightJSON(message);
+
+                // Assemble final HTML
+                const bubbleHTML = role === 'tool'
+                    ? `${roleHeader}<div class="tool-content custom-scrollbar collapsed" id="${messageId}"><pre>${rawJSON}</pre></div>`
+                    : `${roleHeader}<div class="rendered-view" id="${renderedId}">${renderedHTML}</div><div class="raw-view hidden" id="${rawId}"><pre>${rawJSON}</pre></div>`;
+
+                return `<div class="message ${role}"><div class="message-bubble">${bubbleHTML}</div></div>`;
             }
 
-            // Build raw JSON view
-            const rawJSON = syntaxHighlightJSON(message);
-
-            // For tool messages, only show raw JSON in a collapsible container
-            if (role === 'tool') {
-                bubbleHTML = `
-                    ${roleHeader}
-                    <div class="tool-content custom-scrollbar collapsed" id="${messageId}">
-                        <pre>${rawJSON}</pre>
-                    </div>
-                `;
-            } else {
-                bubbleHTML = `
-                    ${roleHeader}
-                    <div class="rendered-view" id="${renderedId}">
-                        ${renderedHTML}
-                    </div>
-                    <div class="raw-view hidden" id="${rawId}">
-                        <pre>${rawJSON}</pre>
-                    </div>
-                `;
+            function toggleRaw(rawId, renderedId) {
+                const rawView = document.getElementById(rawId);
+                const renderedView = document.getElementById(renderedId);
+                if (rawView && renderedView) {
+                    rawView.classList.toggle('hidden');
+                    renderedView.classList.toggle('hidden');
+                } else {
+                    console.error('[toggleRaw] Missing elements:', rawId, renderedId);
+                }
             }
-
-            return `
-                <div class="${messageClass}">
-                    <div class="message-bubble">
-                        ${bubbleHTML}
-                    </div>
-                </div>
-            `;
-        }
-
-        function toggleRaw(rawId, renderedId) {
-            if (DEBUG) console.log('[toggleRaw] Called with:', { rawId, renderedId });
-            const rawView = document.getElementById(rawId);
-            const renderedView = document.getElementById(renderedId);
-
-            if (rawView && renderedView) {
-                rawView.classList.toggle('hidden');
-                renderedView.classList.toggle('hidden');
-            } else {
-                console.error('[toggleRaw] Missing elements!', { rawView, renderedView });
-            }
-        }
 
             function toggleTool(id) {
                 const element = document.getElementById(id);
-                if (!element) {
-                    console.error(`[toggleTool] Element with id "${id}" not found`);
-                    return;
-                }
+                if (!element) return console.error('[toggleTool] Element not found:', id);
 
                 const bubble = element.parentElement;
-                if (!bubble) {
-                    console.error(`[toggleTool] Parent element not found for id "${id}"`);
-                    return;
-                }
+                if (!bubble) return console.error('[toggleTool] Parent not found:', id);
 
                 const toggle = bubble.querySelector('.tool-toggle');
+                const isCollapsed = element.classList.toggle('collapsed');
 
-                if (element.classList.contains('collapsed')) {
-                    element.classList.remove('collapsed');
-                    if (toggle) {
-                        toggle.textContent = '▲ Click to collapse';
-                        toggle.setAttribute('aria-expanded', 'true');
-                    }
-                } else {
-                    element.classList.add('collapsed');
-                    if (toggle) {
-                        toggle.textContent = '▼ Click to expand';
-                        toggle.setAttribute('aria-expanded', 'false');
-                    }
+                if (toggle) {
+                    toggle.textContent = isCollapsed ? '▼ Click to expand' : '▲ Click to collapse';
+                    toggle.setAttribute('aria-expanded', !isCollapsed);
                 }
             }
 
-        // Debounce rendering to prevent flashing from multiple rapid updates
-        let renderTimeout = null;
-        let isUpdating = false;
+            let renderTimeout = null;
+            let isUpdating = false;
 
             function performRender(data) {
-                // Build new content first (offscreen) to avoid flash
                 const conversationCard = document.createElement('div');
                 conversationCard.className = 'conversation';
-
-                // Use array for better performance with many messages
                 const messageParts = [];
 
-                // data can be:
-                // - Array of message objects (standard chat output with multiple messages)
-                // - Single message object
-                // - Object with messages field
-                // - String (simple text output)
-                // - Generic object (fallback to JSON display)
-
                 if (Array.isArray(data)) {
-                    // Array of messages - render each one
-                    if (DEBUG) console.log('[Renderer] Rendering array of', data.length, 'messages');
-                    data.forEach((message, index) => {
-                        if (DEBUG) console.log(`[Renderer] Message ${index}:`, {
-                            role: message.role || message.type,
-                            hasContent: !!message.content,
-                            contentType: Array.isArray(message.content) ? 'array' : typeof message.content,
-                            hasToolCalls: !!message.tool_calls
-                        });
-                        messageParts.push(renderMessage(message, index));
-                    });
+                    data.forEach((msg, i) => messageParts.push(renderMessage(msg, i)));
                 } else if (typeof data === 'object' && (data.role || data.type)) {
-                    // Single message object with role
-                    if (DEBUG) console.log('[Renderer] Rendering single message with role:', data.role || data.type);
                     messageParts.push(renderMessage(data, 0));
                 } else if (typeof data === 'object' && data.messages && Array.isArray(data.messages)) {
-                    // Object containing messages array
-                    if (DEBUG) console.log('[Renderer] Rendering messages field with', data.messages.length, 'messages');
-                    data.messages.forEach((message, index) => {
-                        messageParts.push(renderMessage(message, index));
-                    });
+                    data.messages.forEach((msg, i) => messageParts.push(renderMessage(msg, i)));
                 } else if (typeof data === 'string') {
-                    // Plain string - wrap as a message
-                    if (DEBUG) console.log('[Renderer] Rendering plain string');
-                    messageParts.push(renderMessage({
-                        role: 'assistant',
-                        content: data,
-                        id: 'msg-' + Date.now()
-                    }, 0));
+                    messageParts.push(renderMessage({ role: 'assistant', content: data, id: 'msg-' + Date.now() }, 0));
                 } else {
-                    // Generic object - display as formatted JSON
-                    if (DEBUG) console.log('[Renderer] Rendering generic object as JSON');
-                    messageParts.push(renderMessage({
-                        role: 'assistant',
-                        content: safeStringify(data),
-                        id: 'msg-' + Date.now()
-                    }, 0));
+                    messageParts.push(renderMessage({ role: 'assistant', content: safeStringify(data), id: 'msg-' + Date.now() }, 0));
                 }
 
                 const conversationHTML = messageParts.join('');
 
-            if (conversationHTML) {
+                if (!conversationHTML) {
+                    console.warn('[Renderer] Unable to render data');
+                    isUpdating = false;
+                    return;
+                }
+
                 conversationCard.innerHTML = conversationHTML;
 
-                // Smooth transition: fade out slightly, replace content, fade in
                 const existingCard = conversationsContainer.querySelector('.conversation');
                 if (existingCard && !isUpdating) {
                     isUpdating = true;
                     existingCard.classList.add('updating');
-
-                    // Use CSS transition duration (150ms)
                     setTimeout(() => {
                         conversationsContainer.replaceChildren(conversationCard);
-                        // Force reflow to ensure CSS transition works properly
-                        // Reading offsetWidth triggers a synchronous layout calculation
-                        void conversationCard.offsetWidth;
+                        void conversationCard.offsetWidth; // Trigger reflow
                         conversationCard.classList.remove('updating');
                         isUpdating = false;
                     }, 150);
                 } else {
-                    // First render, no transition needed
                     conversationsContainer.replaceChildren(conversationCard);
                     isUpdating = false;
                 }
-            } else {
-                console.warn('[Renderer] Unable to render data');
-                isUpdating = false;
-            }
-        }
-
-        window.addEventListener('message', (event) => {
-            const { type, data, metadata } = event.data;
-
-            if (DEBUG) {
-                console.log('===========================================');
-                console.log('[Renderer] Received message from LangSmith');
-                console.log('[Renderer] Type:', type);
-                console.log('[Renderer] Data structure:', {
-                    isArray: Array.isArray(data),
-                    isObject: typeof data === 'object',
-                    hasRole: data?.role || data?.type,
-                    hasMessages: data?.messages,
-                    dataKeys: data ? Object.keys(data) : null
-                });
-                console.log('[Renderer] Full data:', JSON.stringify(data, null, 2).substring(0, 500) + '...');
-                console.log('===========================================');
             }
 
-            // Focus on rendering the data (the output)
-            if (!data) {
-                if (DEBUG) console.warn('[Renderer] No data to display');
-                return;
-            }
+            window.addEventListener('message', (event) => {
+                const { data } = event.data;
 
-            // Debounce: Clear any pending render and schedule a new one
-            if (renderTimeout) {
-                clearTimeout(renderTimeout);
-            }
+                if (!data) return;
 
-            // Debounce delay (50ms)
-            renderTimeout = setTimeout(() => {
-                performRender(data);
-                renderTimeout = null;
-            }, 50);
-        });
+                if (renderTimeout) clearTimeout(renderTimeout);
+                renderTimeout = setTimeout(() => {
+                    performRender(data);
+                    renderTimeout = null;
+                }, 50);
+            });
 
             // Cleanup on unload
             window.addEventListener('beforeunload', () => {
