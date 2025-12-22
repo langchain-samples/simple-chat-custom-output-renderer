@@ -940,12 +940,34 @@
                 conversationCard.className = 'conversation';
                 const messageParts = [];
 
+                // Helper function to filter for last AI message
+                function getLastAIMessage(messages) {
+                    if (!Array.isArray(messages)) return null;
+                    // Find last message with role 'assistant' or 'ai'
+                    for (let i = messages.length - 1; i >= 0; i--) {
+                        const msg = messages[i];
+                        if (msg && (msg.role === 'assistant' || msg.role === 'ai' || msg.type === 'assistant' || msg.type === 'ai')) {
+                            return msg;
+                        }
+                    }
+                    return null;
+                }
+
                 if (Array.isArray(data)) {
-                    data.forEach((msg, i) => messageParts.push(renderMessage(msg, i)));
+                    const lastAI = getLastAIMessage(data);
+                    if (lastAI) {
+                        messageParts.push(renderMessage(lastAI, 0));
+                    }
                 } else if (typeof data === 'object' && (data.role || data.type)) {
-                    messageParts.push(renderMessage(data, 0));
+                    // Single message - only render if it's an AI message
+                    if (data.role === 'assistant' || data.role === 'ai' || data.type === 'assistant' || data.type === 'ai') {
+                        messageParts.push(renderMessage(data, 0));
+                    }
                 } else if (typeof data === 'object' && data.messages && Array.isArray(data.messages)) {
-                    data.messages.forEach((msg, i) => messageParts.push(renderMessage(msg, i)));
+                    const lastAI = getLastAIMessage(data.messages);
+                    if (lastAI) {
+                        messageParts.push(renderMessage(lastAI, 0));
+                    }
                 } else if (typeof data === 'string') {
                     messageParts.push(renderMessage({ role: 'assistant', content: data, id: 'msg-' + Date.now() }, 0));
                 } else {

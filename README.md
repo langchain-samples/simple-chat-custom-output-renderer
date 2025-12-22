@@ -8,11 +8,14 @@ A single-file custom output renderer for LangSmith that displays conversation tr
 
 ## What This Does
 
-Transforms raw LangSmith trace JSON into a readable chat interface with:
-- Message bubbles (blue for users, green for AI, yellow for tools)
+Displays the **last AI message** from LangSmith traces in a clean chat interface with:
+- Message bubble styling (green for AI responses)
 - Markdown rendering with syntax highlighting
-- Collapsible tool outputs
+- Tool call displays with syntax-highlighted JSON arguments
 - Toggle to view raw JSON
+- Collapsible tool outputs
+
+Note: This renderer filters conversations to show only the final AI assistant response, not the full conversation history.
 
 ## Quick Start
 
