@@ -18,13 +18,13 @@ Transforms raw LangSmith trace JSON into a readable chat interface with:
 
 ### 1. Host the File
 
-Upload `index_chat.html` to any static host:
+Upload `chat.html` to any static host:
 
 **GitHub Pages (Easiest):**
 1. Push file to your repo
 2. Go to repo Settings → Pages
 3. Deploy from main branch
-4. Your URL: `https://YOUR-USERNAME.github.io/REPO-NAME/index_chat.html`
+4. Your URL: `https://YOUR-USERNAME.github.io/REPO-NAME/chat.html`
 
 **Other Options:** Vercel, Netlify, AWS S3, any web server
 
@@ -40,7 +40,7 @@ Done! Your traces now render with the custom interface.
 ## File Structure
 
 This repo contains:
-- **`index_chat.html`** - The production renderer (~1,000 lines, single file)
+- **`chat.html`** - Single HTML file with inline CSS and JavaScript (~1,000 lines)
 - **`assets/`** - Screenshot and other assets
 
 ## How It Works
