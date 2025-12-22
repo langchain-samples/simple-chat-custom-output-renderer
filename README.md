@@ -1,6 +1,6 @@
 # LangSmith Custom Output Renderer
 
-A single-file custom output renderer for LangSmith that displays conversation traces with a clean chat interface, built for [Chat LangChain](https://chat.langchain.com).
+A single-file custom output renderer for LangSmith that displays conversation traces with a clean chat interface. While I built and tested with [Chat LangChain](https://chat.langchain.com) in mind, it should work for most common chat UIs.
 
 ![Custom Output Renderer](assets/custom_output.png)
 
