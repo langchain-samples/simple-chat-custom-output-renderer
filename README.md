@@ -2,9 +2,9 @@
 
 A single-file custom output renderer for LangSmith that displays conversation traces with a clean chat interface, built for [Chat LangChain](https://chat.langchain.com).
 
-![Custom Output Renderer](custom_output.png)
+![Custom Output Renderer](assets/custom_output.png)
 
-> **Note:** This was entirely built using Claude Code. I don't have a background in HTML/CSS/JS.
+> **Note:** This was entirely built using Claude Code. I have zero background in HTML/CSS/JS.
 
 ## What This Does
 
@@ -41,7 +41,7 @@ Done! Your traces now render with the custom interface.
 
 This repo contains:
 - **`index_chat.html`** - The production renderer (~1,000 lines, single file)
-- **`QUICKSTART.md`** - 2-minute setup guide
+- **`assets/`** - Screenshot and other assets
 
 ## How It Works
 
