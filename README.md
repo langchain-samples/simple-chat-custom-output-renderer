@@ -27,7 +27,7 @@ Upload `chat.html` to any static host:
 1. Push file to your repo
 2. Go to repo Settings → Pages
 3. Deploy from main branch
-4. Your URL: `https://YOUR-USERNAME.github.io/REPO-NAME/chat.html`
+4. Your URL: `https://langchain-samples.github.io/simple-chat-custom-output-renderer/chat.html`
 
 **Other Options:** Vercel, Netlify, AWS S3, any web server
 
