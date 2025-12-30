@@ -755,6 +755,18 @@
                 return null;
             }
 
+            // Helper to extract the last AI message from a messages array
+            function getLastAIMessageFromArray(messages) {
+                if (!Array.isArray(messages)) return null;
+                for (let i = messages.length - 1; i >= 0; i--) {
+                    const msg = messages[i];
+                    if (msg && (msg.role === 'assistant' || msg.role === 'ai' || msg.type === 'assistant' || msg.type === 'ai')) {
+                        return msg;
+                    }
+                }
+                return null;
+            }
+
             function formatContent(content) {
                 if (!content) return '';
 
@@ -783,6 +795,52 @@
 
                 // If content is an object, try to extract text from common fields
                 if (typeof content === 'object') {
+                    // Check for nested output.messages structure (LangGraph - plural)
+                    if (content.output && content.output.messages && Array.isArray(content.output.messages)) {
+                        const lastAI = getLastAIMessageFromArray(content.output.messages);
+                        if (lastAI) {
+                            if (DEBUG) console.log('[formatContent] Found nested AI message in output.messages');
+                            // Recursively format the AI message content
+                            return formatContent(lastAI.content);
+                        }
+                    }
+
+                    // Check for nested output.message structure (LangGraph - singular)
+                    if (content.output && content.output.message) {
+                        const msg = content.output.message;
+                        // If it's an AI message object, extract its content
+                        if (msg.role === 'assistant' || msg.role === 'ai' || msg.type === 'assistant' || msg.type === 'ai') {
+                            if (DEBUG) console.log('[formatContent] Found nested AI message in output.message');
+                            return formatContent(msg.content);
+                        }
+                        // If it's just a string or other content, format it directly
+                        if (DEBUG) console.log('[formatContent] Found content in output.message');
+                        return formatContent(msg);
+                    }
+
+                    // Check for top-level messages array
+                    if (content.messages && Array.isArray(content.messages)) {
+                        const lastAI = getLastAIMessageFromArray(content.messages);
+                        if (lastAI) {
+                            if (DEBUG) console.log('[formatContent] Found nested AI message in messages');
+                            // Recursively format the AI message content
+                            return formatContent(lastAI.content);
+                        }
+                    }
+
+                    // Check for top-level message field
+                    if (content.message) {
+                        const msg = content.message;
+                        // If it's an AI message object, extract its content
+                        if (msg.role === 'assistant' || msg.role === 'ai' || msg.type === 'assistant' || msg.type === 'ai') {
+                            if (DEBUG) console.log('[formatContent] Found nested AI message in message');
+                            return formatContent(msg.content);
+                        }
+                        // If it's just a string or other content, format it directly
+                        if (DEBUG) console.log('[formatContent] Found content in message');
+                        return formatContent(msg);
+                    }
+
                     const textField = extractTextField(content);
                     if (textField) {
                         if (DEBUG) console.log('[formatContent] Extracting text from object:', textField.substring(0, 100));
@@ -798,6 +856,53 @@
                 if (isJSON(content)) {
                     try {
                         const parsed = JSON.parse(content);
+
+                        // Check for nested output.messages structure (LangGraph - plural)
+                        if (parsed.output && parsed.output.messages && Array.isArray(parsed.output.messages)) {
+                            const lastAI = getLastAIMessageFromArray(parsed.output.messages);
+                            if (lastAI) {
+                                if (DEBUG) console.log('[formatContent] Found nested AI message in JSON output.messages');
+                                // Recursively format the AI message content
+                                return formatContent(lastAI.content);
+                            }
+                        }
+
+                        // Check for nested output.message structure (LangGraph - singular)
+                        if (parsed.output && parsed.output.message) {
+                            const msg = parsed.output.message;
+                            // If it's an AI message object, extract its content
+                            if (msg.role === 'assistant' || msg.role === 'ai' || msg.type === 'assistant' || msg.type === 'ai') {
+                                if (DEBUG) console.log('[formatContent] Found nested AI message in JSON output.message');
+                                return formatContent(msg.content);
+                            }
+                            // If it's just a string or other content, format it directly
+                            if (DEBUG) console.log('[formatContent] Found content in JSON output.message');
+                            return formatContent(msg);
+                        }
+
+                        // Check for top-level messages array in JSON
+                        if (parsed.messages && Array.isArray(parsed.messages)) {
+                            const lastAI = getLastAIMessageFromArray(parsed.messages);
+                            if (lastAI) {
+                                if (DEBUG) console.log('[formatContent] Found nested AI message in JSON messages');
+                                // Recursively format the AI message content
+                                return formatContent(lastAI.content);
+                            }
+                        }
+
+                        // Check for top-level message field in JSON
+                        if (parsed.message) {
+                            const msg = parsed.message;
+                            // If it's an AI message object, extract its content
+                            if (msg.role === 'assistant' || msg.role === 'ai' || msg.type === 'assistant' || msg.type === 'ai') {
+                                if (DEBUG) console.log('[formatContent] Found nested AI message in JSON message');
+                                return formatContent(msg.content);
+                            }
+                            // If it's just a string or other content, format it directly
+                            if (DEBUG) console.log('[formatContent] Found content in JSON message');
+                            return formatContent(msg);
+                        }
+
                         const textField = extractTextField(parsed);
                         if (textField) {
                             if (DEBUG) console.log('[formatContent] Extracting text from JSON string:', textField.substring(0, 100));
